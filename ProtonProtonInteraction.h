@@ -18,7 +18,11 @@ const double mChargedPion = 1.39570 * 1e8;
 const double mNeutralPion = 1.34977 * 1e8;
 const double mMuon = 1.0566 * 1e8;
 
-
+/**
+ @class ElectronSpectrum
+ @brief Simple class for the electron spectrum due to pi-+ decay.
+ Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
+ */
 class ElectronSpectrum {
 public:
     std::vector<double> frac;
@@ -27,6 +31,11 @@ public:
 	double energyFraction();
 };
 
+/**
+ @class ElectronNeutrinoSpectrum
+ @brief Simple class for the electron neutrino spectrum due to pi-+ decay.
+ Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
+ */
 class ElectronNeutrinoSpectrum {
 public:
     std::vector<double> frac;
@@ -35,6 +44,12 @@ public:
 	double energyFraction();
 };
 
+/**
+ @class MuonNeutrinoSpectrum1
+ @brief Simple class for the muon spectrum due to pi-+ decay.
+ This spectrum is for muons due to pi-+ decay.
+ Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
+ */
 class MuonNeutrinoSpectrum1 {
 public:
     std::vector<double> frac;
@@ -43,6 +58,12 @@ public:
 	double energyFraction();
 };
 
+/**
+ @class MuonNeutrinoSpectrum2
+ @brief Simple class for the muon spectrum due to pi-+ decay.
+ This spectrum is for muon anti-neutrinos due to muon decay.
+ Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
+ */
 class MuonNeutrinoSpectrum2 {
 public:
     std::vector<double> frac;
@@ -51,6 +72,12 @@ public:
 	double energyFraction();
 };
 
+/**
+ @class GammaSpectrum
+ @brief Simple class for the gamma-ray spectrum.
+ This spectrum is for muons due to pi-0 decay.
+ Follows: Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
+ */
 class GammaSpectrum {
 public:
     std::vector<double> frac;
@@ -60,6 +87,16 @@ public:
 	double energyFraction(double energy);
 };
 
+/**
+ @class ProtonProtonInteraction
+ @brief Handles pp interactions following the parametrisations from:
+ 
+ Kelner et al. Phys. Rev. D 74 (2006) 034018.
+ Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
+
+ Note that this is a hybrid approach: Kafexhiu is used only to model the gamma-ray
+ spectrum due to the pi-0 decay, whereas Kelner+ is used to model everything else.
+ */
 class ProtonProtonInteraction : public crpropa::Module
 {
 protected:
@@ -83,7 +120,6 @@ protected:
 	std::string gammaSpecFile;
 
 public:
-	/// The parent's constructor need to be called on initialization!
 	ProtonProtonInteraction(std::string fieldName, std::string dataDir, double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
 	void process(crpropa::Candidate *candidate) const;
 	void performInteraction(crpropa::Candidate *candidate) const;
@@ -96,7 +132,9 @@ public:
 	void setHavePhotons(bool photons);
 	void setFieldNorm(double normBaryonField);
 	void neutralPionChannel(crpropa::Candidate *candidate) const;
-	void chargedPionChannel(crpropa::Candidate *candidate) const;
+	void posChargedPionChannel(crpropa::Candidate *candidate) const;
+	void negChargedPionChannel(crpropa::Candidate *candidate) const;
 	void etaMesonChannel(crpropa::Candidate *candidate) const;
+	double pionMultiplicity(crpropa::Candidate *candidate);
 };
 
