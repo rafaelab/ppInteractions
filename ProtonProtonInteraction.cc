@@ -5,7 +5,7 @@ using namespace crpropa;
 ProtonProtonInteraction::ProtonProtonInteraction(std::string fieldName, std::string dataDir, double normBaryonField, bool photons, bool electrons, bool neutrinos, double limit) : Module() {
 	std::string filename1 = dataDir + "rate_" + fieldName + ".txt";
 	std::string filename2 = dataDir + "enFracPi_" + fieldName + ".txt";
-	gammaSpecFile = dataDir + "enFracGamma_" + fieldName + ".txt";
+	pionSpecFile = dataDir + "enFracGamma_" + fieldName + ".txt";
 
 	initRate(filename1);
 	initFraction(filename2);
@@ -64,12 +64,11 @@ void ProtonProtonInteraction::initRate(std::string filename) {
 }
 
 void ProtonProtonInteraction::initSpectra() {
-	electronSpec = new ElectronSpectrum();
-	electronNuSpec = new ElectronNeutrinoSpectrum();
-	muonNuSpec1 = new MuonNeutrinoSpectrum1();
-	muonNuSpec2 = new MuonNeutrinoSpectrum2();
-	gammaSpec = new GammaSpectrum();
-	gammaSpec->initSpectrum(gammaSpecFile);
+	LeptonSpectrum *positronSpec = new LeptonSpectrum(-11);
+	LeptonSpectrum *muonNuSpec = new LeptonSpectrum(14);
+	LeptonSpectrum *muonAntiNuSpec = new LeptonSpectrum(-14);
+	LeptonSpectrum *electronNuSpec = new LeptonSpectrum(12);
+	pionSpec = PionSpectrum(pionSpecFile);
 }
 
 void ProtonProtonInteraction::initFraction(std::string filename) {
@@ -154,37 +153,79 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 	double en = candidate->current.getEnergy();
 	Random &random = Random::instance();
 
+	// select position of secondary within step
+	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
+
 	// check if in tabulated energy range
 	if (en < tabFracEnergy.front() or (en > tabFracEnergy.back()))
 		return;
 
-	/* multiplicity considerations go here */
+	// Use Kafexhiu et al. 2014 approach to compute gamma-ray fluxes.
+	// Use Kelner et al. 2006 to scale lepton spectra wrt gamma rays.
+	int mult = neutralPionMultiplicity(candidate);
+	double eps = 1e-6;
+	double fmin = 1e-6;
+	double fmax = 1;
+	int i = 0;
+	double xtot = 0;
+	double dEtot_gamma = 0;
+	double dEtot_charged = 0;
+	while(i < mult and xtot < 1) {
+		double x_pi0 = interpolate2d(random.randUniform(fmin, fmax), en, tabFracProb, tabFracEnergy, tabFrac);
+		double en_pi0 = x_pi0 * en;
+		double x_gamma = 0.5;
+		if (havePhotons) {
+			candidate->addSecondary(22, x_gamma * en_pi0, pos);
+			candidate->addSecondary(22, x_gamma * en_pi0, pos);
+		}
+		fmax -= x_pi0;
+		xtot += x_pi0;
+		dEtot_gamma += xtot * en_pi0;
+		i++;
+	} 
 
-	// decide which meson is produced
-	int mesonId;
-	double r = random.rand();
-	if (r < 1 / 3) {
-		mesonId = 1; // pi^+ charged pion
-	} else {
-		mesonId = 2; // neutral pion
-	}
+	// // Now compute the secondary leptons.
+	// // Use the relation wrt to photons.
+	// fmax = 1;
+	// i = 0;
+	// xtot = 0;
+	// mult = 
 
-	switch(mesonId) {
-		case 1:
-			posChargedPionChannel(candidate);
-			break;
-		case 2:
-			neutralPionChannel(candidate);
-			break;
-		default:
-			neutralPionChannel(candidate); // throw
-	}
+	// while(i < mult and xtot < 1) {
+	// 	double x_pi0 = interpolate2d(random.randUniform(fmin, fmax), en, tabFracProb, tabFracEnergy, tabFrac);
+	// 	double en_pi0 = x_pi0 * en;
+	// 	double x_gamma = 0.5;
+	// 	double x_numu2 = muonNuSpec2.energyFraction(fmin, fmax) * en_pi0;
+	// 	double x_e = electronSpec.energyFraction(fmin, fmax) * en_pi0;
+	// 	double x_nue = electronNuSpec.energyFraction(fmin, fmax) * en_pi0;
+	// 	// double x_numu1 = muonNuSpec1.energyFraction(fmin, fmax) * en_pi0;
+	// 	double x_numu1 = 1 - x_e - x_nue - x_numu2;
+	// 	if (havePhotons) {
+	// 		candidate->addSecondary(22, x_gamma * en_pi0, pos);
+	// 		candidate->addSecondary(22, x_gamma * en_pi0, pos);
+	// 	}
+	// 	if (haveElectrons) {
+	// 		candidate->addSecondary(11, x_e * en_pi0, pos);
+	// 	}
+	// 	if (haveNeutrinos) {
+	// 		candidate->addSecondary( 12, x_nue * en_pi0, pos);
+	// 		candidate->addSecondary(-14, x_numu1 * en_pi0, pos);
+	// 		candidate->addSecondary( 14, x_numu2 * en_pi0, pos);
+	// 	}
+	// 	fmax -= x_pi0;
+	// 	xtot = x_gamma * 2 + x_numu1 + x_numu2 + x_e + x_nue;
+	// 	dEtot += xtot * en_pi0;
+	// 	i++;
+	// } 
+
+	// // \pi^+ -> \mu^+ + \nu_\mu
+	candidate->current.setEnergy(en - dEtot_gamma);
+	
 }
 
-double ProtonProtonInteraction::pionMultiplicity(Candidate *candidate) {
+int ProtonProtonInteraction::neutralPionMultiplicity(Candidate *candidate) const {
 	// Parametrisation from Kafexhiu et al. 2014 for the pi0 multiplicity
 	// Parameters are for GEANT4 (will be changed in future releases).
-
 	double en = candidate->current.getEnergy() - mass_proton * c_squared;
 	double a1 = 0.728;
 	double a2 = 0.596;
@@ -192,139 +233,114 @@ double ProtonProtonInteraction::pionMultiplicity(Candidate *candidate) {
 	double a4 = 0.2503;
 	double a5 = 0.117;
 	double csi = (en - 3e9 * eV) / (mass_proton * c_squared);
-	return a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
+	double res = a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
+	return (int) std::floor(res);
 }
 
-void ProtonProtonInteraction::neutralPionChannel(Candidate *candidate) const {
+int ProtonProtonInteraction::chargedPionMultiplicity(Candidate *candidate) const {
+	// Parametrisation from Kelner et al. 2006 (Eq. 4).
+	// Parameters are for QGSJet.
 	double en = candidate->current.getEnergy();
-	Random &random = Random::instance();
-	double x = interpolate2d(random.rand(), en, tabFracProb, tabFracEnergy, tabFrac);
-
-	double enPion = x * en;
-	double enProton = (1 - x) * en;
-
-	if (x < 0 || x > 1)
-		std::cerr << "neutralPionChannel: pion energy fraction = " << x << ". Should be between 0-1." << std::endl;
-
-	candidate->current.setEnergy(enProton);
+	double x = en / mass_proton;
 
 
-	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
-
-	if (havePhotons) {
-		std::cout << "photons neutralPion" << std::endl;
-		double f = gammaSpec->energyFraction(enPion);
-		if (f < 0 || f > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f=" << f << ")." << std::endl;
-		candidate->addSecondary(22, f * enPion, pos);
-		candidate->addSecondary(22, (1 - f) * enPion, pos);
-	}
+	double L = log(en / (1e12 * eV));
+	double Bpi = 5.58 + 0.78 * L + 0.10 * L * L;
+	double r = 3.1 / pow(Bpi, 1.5);
+	double alpha = 0.89 / (sqrt(Bpi) * (1 - exp(-0.33 * Bpi)));
+	double a = 1 - pow(x, alpha);
+	double b = pow(1 + r * pow(x, alpha), 3);
+	// return (int) std::floor(Bpi * pow(a / b, 4));
+	double pf = 4 * alpha * Bpi * pow(x, alpha - 1);
+	double f1 = pow((1 - pow(x, alpha)) / pow(1 + r * pow(x, alpha), 3), 4);
+	double f2 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
+	double f3 = sqrt(1 - mChargedPion / (x * en));
+	std::cout << pf * f1 *f2 * f3 << std::endl;
+	return (int) std::floor(pf * f1 *f2 * f3 * x);
 }
 
-void ProtonProtonInteraction::posChargedPionChannel(Candidate *candidate) const {
-	double en = candidate->current.getEnergy();
-	Random &random = Random::instance();
-	double x = interpolate2d(random.rand(), en, tabFracProb, tabFracEnergy, tabFrac);
-
-	if (x < 0 || x > 1)
-		std::cerr << "chargedPionChannel: pion energy fraction = " << x << ". Should be between 0-1." << std::endl;
-
-	double enPion = x * en;
-	double enNeutron = (1 - x) * en;
-
-	candidate->current.setId(nucleusId(1, 0)); // neutron
-	candidate->current.setEnergy(enNeutron);
-
-	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
-
-	if (haveNeutrinos) {
-		std::cout << "neutrinos chargedPion" << std::endl;
-		double f1 = electronNuSpec->energyFraction();
-		double f2 = muonNuSpec2->energyFraction();
-		double f3 = muonNuSpec1->energyFraction();
-		if (f1 < 0 || f1 > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f1=" << f1 << ")." << std::endl;
-		if (f2 < 0 || f2 > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f2=" << f2 << ")." << std::endl;
-		if (f3 < 0 || f3 > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f3=" << f3 << ")." << std::endl;
-		candidate->addSecondary( 12, f1 * enPion, pos);
-		candidate->addSecondary(-14, f2 * enPion, pos);
-		candidate->addSecondary( 14, f3 * enPion, pos);
-	}
-	if (haveElectrons) {
-		std::cout << "electrons chargedPion" << std::endl;
-		double f = electronSpec->energyFraction();
-		candidate->addSecondary( 11, f * enPion, pos);
-	}
+PionSpectrum ProtonProtonInteraction::pionDistribution(double en) const {
+	return pionSpec;
 }
 
-void ProtonProtonInteraction::negChargedPionChannel(Candidate *candidate) const {
-	double en = candidate->current.getEnergy();
-	Random &random = Random::instance();
-	double x = interpolate2d(random.rand(), en, tabFracProb, tabFracEnergy, tabFrac);
-
-	if (x < 0 || x > 1)
-		std::cerr << "chargedPionChannel: pion energy fraction = " << x << ". Should be between 0-1." << std::endl;
-
-	double enPion = x * en;
-	double enNeutron = (1 - x) * en;
-
-	candidate->current.setId(nucleusId(1, 0)); 
-	candidate->current.setEnergy(enNeutron);
-
-	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
-
-	if (haveNeutrinos) {
-		std::cout << "neutrinos chargedPion" << std::endl;
-		double f1 = electronNuSpec->energyFraction();
-		double f2 = muonNuSpec2->energyFraction();
-		double f3 = muonNuSpec1->energyFraction();
-		if (f1 < 0 || f1 > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f1=" << f1 << ")." << std::endl;
-		if (f2 < 0 || f2 > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f2=" << f2 << ")." << std::endl;
-		if (f3 < 0 || f3 > 1)
-			std::cerr << "neutralPionChannel: gamma-ray energy fraction outside range (0,1) (f3=" << f3 << ")." << std::endl;
-		candidate->addSecondary(-12, f1 * enPion, pos);
-		candidate->addSecondary( 14, f2 * enPion, pos);
-		candidate->addSecondary(-14, f3 * enPion, pos);
+LeptonSpectrum::LeptonSpectrum(int id) {
+	prob.clear();
+	ratio.clear();
+	frac.clear();
+	switch(id) {
+		case -11:
+			positronDistribution();
+		case 12:
+			electronNeutrinoDistribution();
+		case 14:
+			muonNeutrinoDistribution();
+		case -14:
+			muonAntiNeutrinoDistribution();
+		default:
+			throw std::invalid_argument("Unknown id for lepton.");
 	}
-	if (haveElectrons) {
-		std::cout << "electrons chargedPion" << std::endl;
-		double f = electronSpec->energyFraction();
-		candidate->addSecondary(-11, f * enPion, pos);
-	}
-}
-void ProtonProtonInteraction::etaMesonChannel(Candidate *candidate) const {
-	// for now unused
-
-	double en = candidate->current.getEnergy();
-	Random &random = Random::instance();
-	double x = interpolate2d(random.rand(), en, tabFracProb, tabFracEnergy, tabFrac);
-
-	double enPion = x * en;
-	double enProton = (1 - x) * en;
-
-	candidate->current.setEnergy(enProton);
-
-	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
-
-	if (havePhotons) {
-		candidate->addSecondary(22, 0.5 * enPion, pos);
-		candidate->addSecondary(22, 0.5 * enPion, pos);
-	}
+	setLepton(id);
 }
 
-void ElectronSpectrum::initSpectrum() {
-	// Electron spectrum; follows Eq. 36 from Kelner et al. 2006.
+void LeptonSpectrum::setLepton(int id) {
+	leptonId = id;
+}
 
+void LeptonSpectrum::setFraction(std::vector<double> fraction) {
+	frac = fraction;
+}
+
+void LeptonSpectrum::setRatio(std::vector<double> ratio) {
+	ratio = ratio;
+}
+
+void LeptonSpectrum::setProbability(std::vector<double> probability) {
+	prob = probability;
+}
+
+void LeptonSpectrum::computeMultiplicity(PionSpectrum ps) {
+
+}
+
+double LeptonSpectrum::energyFraction(double pmin, double pmax) const {
+	Random &random = Random::instance();
+	return interpolate(random.randUniform(pmin, pmax), prob, frac);
+}
+
+double LeptonSpectrum::ratioToPhoton(double x) const {
+	return interpolate(x, frac, ratio);
+}
+
+void LeptonSpectrum::muonNeutrinoDistribution() {
+	// Muon neutrino due to pion+ decay (pi+ -> mu+ + nu_mu)
+	// See Eqs. 23-26 from Kelner et al. 2006.
 	size_t n = 1000;
 	for (int i = 0; i < n; i++) {
 		double x = 0.001 * (i + 1);
 		frac.push_back(x);
 	}
+	double r = pow(mMuon / mChargedPion, 2);
+	double res = 0;
+	for (auto it = prob.begin(); it != prob.end(); it++) {
+		double x = *it;
+		if (x <= r) {
+			res = res + 2.367;
+			prob.push_back(res);
+			ratio.push_back(2.367);
+		} else {
+			prob.push_back(res);
+			ratio.push_back(0.);
+		}
+	}
+}
 
+void LeptonSpectrum::positronDistribution() { 
+	// Electron spectrum; follows Eq. 36 from Kelner et al. 2006.
+	size_t n = 1000;
+	for (int i = 0; i < n; i++) {
+		double x = 0.001 * (i + 1);
+		frac.push_back(x);
+	}
 	double r = pow(mMuon / mChargedPion, 2);
 	double res = 0;
 	for (auto it = prob.begin(); it != prob.end(); it++) {
@@ -341,29 +357,24 @@ void ElectronSpectrum::initSpectrum() {
 		if (x <= r) {
 			res = res + h1 + h2;
 			prob.push_back(res);
+			ratio.push_back(h1 + h2);
 		} else {
 			res += g;
 			prob.push_back(res);
+			ratio.push_back(g);
 		}
 	}
 }
 
-double ElectronSpectrum::energyFraction() {
-	Random &random = Random::instance();
-	return interpolate(random.rand(), prob, frac);
-}
-
-void ElectronNeutrinoSpectrum::initSpectrum() {
+void LeptonSpectrum::electronNeutrinoDistribution() {
 	// Electron neutrino spectrum; follows Eq. 40 from Kelner et al. 2006.
 	// Note that there is a typo in this reference. The correct version is presented
 	// in the erratum: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.79.039901
-
 	size_t n = 1000;
 	for (int i = 0; i < n; i++) {
 		double x = 0.001 * (i + 1);
 		frac.push_back(x);
 	}
-
 	double r = pow(mMuon / mChargedPion, 2);
 	double res = 0;
 	for (auto it = prob.begin(); it != prob.end(); it++) {
@@ -380,59 +391,28 @@ void ElectronNeutrinoSpectrum::initSpectrum() {
 		if (x >= r) {
 			res = res + h1 + h2;
 			prob.push_back(res);
+			ratio.push_back(h1 + h2);
 		} else {
 			res += g;
 			prob.push_back(res);
+			ratio.push_back(g);
 		}
 	}
 }
 
-double ElectronNeutrinoSpectrum::energyFraction() {
-	Random &random = Random::instance();
-	return interpolate(random.rand(), prob, frac);
-}
-
-void MuonNeutrinoSpectrum1::initSpectrum() {
+void LeptonSpectrum::muonAntiNeutrinoDistribution() {
 	// Initiates the table computed following Eq. 36 from Kelner et al. 2006.
-
-	ElectronSpectrum *es = new ElectronSpectrum();
-	frac = es->frac;
-	prob = es->prob;
+	positronDistribution();
 }
 
-double MuonNeutrinoSpectrum1::energyFraction() {
-	Random &random = Random::instance();
-	return interpolate(random.rand(), prob, frac);
+PionSpectrum::PionSpectrum() {
 }
 
-void MuonNeutrinoSpectrum2::initSpectrum() {
-	// Muon neutrino due to pion+ decay (pi+ -> mu+ + nu_mu)
-	// See Eqs. 23-26 from Kelner et al. 2006.
-
-	size_t n = 1000;
-	for (int i = 0; i < n; i++) {
-		double x = 0.001 * (i + 1);
-		frac.push_back(x);
-	}
-	double r = pow(mMuon / mChargedPion, 2);
-	double res = 0;
-	for (auto it = prob.begin(); it != prob.end(); it++) {
-		double x = *it;
-		if (x <= r) {
-			res = res + 2.367;
-			prob.push_back(res);
-		} else {
-			prob.push_back(res);
-		}
-	}
+PionSpectrum::PionSpectrum(std::string filename) {
+	initSpectrum(filename);
 }
 
-double MuonNeutrinoSpectrum2::energyFraction() {
-	Random &random = Random::instance();
-	return interpolate(random.rand(), prob, frac);
-}
-
-void GammaSpectrum::initSpectrum(std::string filename) {
+void PionSpectrum::initSpectrum(std::string filename) {
 	// Initiates the table computed following Eq. 11 of Kafexhiu et al. 2014.
 
 	// clear previously loaded tables
@@ -474,7 +454,7 @@ void GammaSpectrum::initSpectrum(std::string filename) {
 	}
 }
 
-double GammaSpectrum::energyFraction(double en) {
+double PionSpectrum::energyFraction(double en) const {
 	Random &random = Random::instance();
 	return interpolate2d(random.rand(), en, prob, energy, frac);
 }

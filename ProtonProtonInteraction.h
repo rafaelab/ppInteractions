@@ -10,81 +10,60 @@
 #include <crpropa/Random.h>
 
 #ifdef _OPENMP
-    #include "omp.h"
+	#include "omp.h"
 #endif
 
 // particle masses in eV
-const double mChargedPion = 1.39570 * 1e8;
-const double mNeutralPion = 1.34977 * 1e8;
-const double mMuon = 1.0566 * 1e8;
+const double mChargedPion = 1.39570 * 1e8 * crpropa::eV / crpropa::c_squared;
+const double mNeutralPion = 1.34977 * 1e8 * crpropa::eV / crpropa::c_squared;
+const double mMuon = 1.0566 * 1e8 * crpropa::eV / crpropa::c_squared;
 
 /**
- @class ElectronSpectrum
- @brief Simple class for the electron spectrum due to pi-+ decay.
- Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
- */
-class ElectronSpectrum {
-public:
-    std::vector<double> frac;
-    std::vector<double> prob;
-	void initSpectrum();
-	double energyFraction();
-};
-
-/**
- @class ElectronNeutrinoSpectrum
- @brief Simple class for the electron neutrino spectrum due to pi-+ decay.
- Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
- */
-class ElectronNeutrinoSpectrum {
-public:
-    std::vector<double> frac;
-    std::vector<double> prob;
-	void initSpectrum();
-	double energyFraction();
-};
-
-/**
- @class MuonNeutrinoSpectrum1
- @brief Simple class for the muon spectrum due to pi-+ decay.
- This spectrum is for muons due to pi-+ decay.
- Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
- */
-class MuonNeutrinoSpectrum1 {
-public:
-    std::vector<double> frac;
-    std::vector<double> prob;
-	void initSpectrum();
-	double energyFraction();
-};
-
-/**
- @class MuonNeutrinoSpectrum2
- @brief Simple class for the muon spectrum due to pi-+ decay.
- This spectrum is for muon anti-neutrinos due to muon decay.
- Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
- */
-class MuonNeutrinoSpectrum2 {
-public:
-    std::vector<double> frac;
-    std::vector<double> prob;
-	void initSpectrum();
-	double energyFraction();
-};
-
-/**
- @class GammaSpectrum
- @brief Simple class for the gamma-ray spectrum.
+ @class PionSpectrum
+ @brief Simple class for the pion spectrum.
  This spectrum is for muons due to pi-0 decay.
  Follows: Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
  */
-class GammaSpectrum {
+class PionSpectrum {
+private:
+	std::vector<double> energy;
+	std::vector<double> frac;
+	std::vector<double> ratio;
+	std::vector<double> prob;
 public:
-    std::vector<double> frac;
-    std::vector<double> prob;
-    std::vector<double> energy;
-	void initSpectrum(std::string);
-	double energyFraction(double energy);
+	PionSpectrum();
+	PionSpectrum(std::string);
+	void initSpectrum(std::string filename);
+	double energyFraction(double en) const;
+};
+
+
+/**
+ @class LeptonSpectrum
+ @brief Simple protype class to store information about the spectrum of secondary particles.
+ All spectra are written in terms of the gamma-ray spectrum.
+ Follows:  Kelner et al. Phys. Rev. D 74 (2006) 034018.
+		   Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
+ */
+class LeptonSpectrum {
+public:
+	int leptonId;
+	std::vector<double> frac;
+	std::vector<double> ratio;
+	std::vector<double> prob;
+	std::vector<double> mult;
+	LeptonSpectrum(int id);
+	void setLepton(int id);
+	void setFraction(std::vector<double> fraction);
+	void setRatio(std::vector<double> ratioToPhoton);
+	void setProbability(std::vector<double> probability);
+	void muonNeutrinoDistribution();
+	void muonAntiNeutrinoDistribution();
+	void electronNeutrinoDistribution();
+	void positronDistribution();
+	void computeMultiplicity(PionSpectrum ps);
+	double energyFraction(double pmin = 0, double pmax = 1) const;
+	double ratioToPhoton(double x) const;
 };
 
 /**
@@ -112,12 +91,12 @@ protected:
 	double limit;
 	double normBaryonField;
 
-	ElectronSpectrum *electronSpec;
-	ElectronNeutrinoSpectrum *electronNuSpec;
-	MuonNeutrinoSpectrum1 *muonNuSpec1;
-	MuonNeutrinoSpectrum2 *muonNuSpec2;
-	GammaSpectrum *gammaSpec;
-	std::string gammaSpecFile;
+	LeptonSpectrum *positronSpec;
+	LeptonSpectrum *electronNuSpec;
+	LeptonSpectrum *muonAntiNuSpec;
+	LeptonSpectrum *muonNuSpec;
+	PionSpectrum pionSpec;
+	std::string pionSpecFile;
 
 public:
 	ProtonProtonInteraction(std::string fieldName, std::string dataDir, double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
@@ -131,10 +110,8 @@ public:
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
 	void setFieldNorm(double normBaryonField);
-	void neutralPionChannel(crpropa::Candidate *candidate) const;
-	void posChargedPionChannel(crpropa::Candidate *candidate) const;
-	void negChargedPionChannel(crpropa::Candidate *candidate) const;
-	void etaMesonChannel(crpropa::Candidate *candidate) const;
-	double pionMultiplicity(crpropa::Candidate *candidate);
+	int neutralPionMultiplicity(crpropa::Candidate *candidate) const;
+	int chargedPionMultiplicity(crpropa::Candidate *candidate) const;
+	PionSpectrum pionDistribution(double energy) const;
 };
 
