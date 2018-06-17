@@ -1,6 +1,10 @@
 #include <sstream>
+#include <iostream>
 #include <fstream>
 #include <cstring>
+#include <cmath>
+#include <limits>
+#include <algorithm>
 
 #include <crpropa/Module.h>
 #include <crpropa/Units.h>
@@ -17,7 +21,6 @@
 const double mChargedPion = 1.39570 * 1e8 * crpropa::eV / crpropa::c_squared;
 const double mNeutralPion = 1.34977 * 1e8 * crpropa::eV / crpropa::c_squared;
 const double mMuon = 1.0566 * 1e8 * crpropa::eV / crpropa::c_squared;
-
 /**
  @class PionSpectrum
  @brief Simple class for the pion spectrum.
@@ -25,16 +28,18 @@ const double mMuon = 1.0566 * 1e8 * crpropa::eV / crpropa::c_squared;
  Follows: Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
  */
 class PionSpectrum {
-private:
+public:
 	std::vector<double> energy;
 	std::vector<double> frac;
 	std::vector<double> ratio;
 	std::vector<double> prob;
-public:
 	PionSpectrum();
-	PionSpectrum(std::string);
-	void initSpectrum(std::string filename);
+	void initSpectrum();
+	double crossSection(double en) const;
 	double energyFraction(double en) const;
+	double computeSlopeInInterval(double xmin, double xmax) const;
+	int neutralPionMultiplicity(double en) const;
+	int chargedPionMultiplicity(double en) const;
 };
 
 
@@ -46,13 +51,16 @@ public:
 		   Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
  */
 class LeptonSpectrum {
+protected:
+	static const size_t nsamples = 1000;
 public:
 	int leptonId;
 	std::vector<double> frac;
 	std::vector<double> ratio;
 	std::vector<double> prob;
-	std::vector<double> mult;
+	LeptonSpectrum();
 	LeptonSpectrum(int id);
+	void init();
 	void setLepton(int id);
 	void setFraction(std::vector<double> fraction);
 	void setRatio(std::vector<double> ratioToPhoton);
@@ -61,7 +69,7 @@ public:
 	void muonAntiNeutrinoDistribution();
 	void electronNeutrinoDistribution();
 	void positronDistribution();
-	void computeMultiplicity(PionSpectrum ps);
+	int computeMultiplicity(PionSpectrum *ps, int mult) const;
 	double energyFraction(double pmin = 0, double pmax = 1) const;
 	double ratioToPhoton(double x) const;
 };
@@ -95,23 +103,18 @@ protected:
 	LeptonSpectrum *electronNuSpec;
 	LeptonSpectrum *muonAntiNuSpec;
 	LeptonSpectrum *muonNuSpec;
-	PionSpectrum pionSpec;
-	std::string pionSpecFile;
+	PionSpectrum *pionSpec;
 
 public:
-	ProtonProtonInteraction(std::string fieldName, std::string dataDir, double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
+	ProtonProtonInteraction(double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
 	void process(crpropa::Candidate *candidate) const;
 	void performInteraction(crpropa::Candidate *candidate) const;
 	void initSpectra();
-	void initRate(std::string filename);
-	void initFraction(std::string filename);
 	void setLimit(double limit);
 	void setHaveElectrons(bool electrons);
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
 	void setFieldNorm(double normBaryonField);
-	int neutralPionMultiplicity(crpropa::Candidate *candidate) const;
-	int chargedPionMultiplicity(crpropa::Candidate *candidate) const;
-	PionSpectrum pionDistribution(double energy) const;
+	double lossLength(int id, double energy) const;
 };
 
