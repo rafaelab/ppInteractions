@@ -8,7 +8,7 @@ ProtonProtonInteraction::ProtonProtonInteraction(double normBaryonField, bool ph
 	setFieldNorm(normBaryonField);
 	setHaveElectrons(electrons);
 	setHaveNeutrinos(neutrinos);
-	setHaveNeutrinos(photons);
+	setHavePhotons(photons);
 	setLimit(limit);
 	setDescription("ProtonProtonInteraction");
 }
