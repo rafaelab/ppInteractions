@@ -60,14 +60,14 @@ void ProtonProtonInteraction::initSpectra() {
 
 void ProtonProtonInteraction::process(Candidate *candidate) const {
 
+	// check if nucleus
+	int id = candidate->current.getId();
+	if (not (isNucleus(id)))
+		return;
+
 	// the loop should be processed at least once for limiting the next step
 	double step = candidate->getCurrentStep();
 	do {
-		// check if nucleus
-		int id = candidate->current.getId();
-		if (not (isNucleus(id)))
-			return;
-
 		double E = candidate->current.getEnergy();
 		double z = candidate->getRedshift();
 		double rate = 1 / lossLength(id, E);
@@ -214,12 +214,14 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		candidate->setActive(false);
 		return;
 	}
+
 	candidate->current.setEnergy(newE);
 	// candidate->setActive(false);
 }
 
 double ProtonProtonInteraction::lossLength(int id, double E) const {
-	double rate = pionSpec->crossSection(E / eV) * normBaryonField;
+	double rate = pionSpec->crossSection(E) * normBaryonField;
+	// std::cout << pionSpec->neutralPionMultiplicity(E) << " " << pionSpec->crossSection(E) << " " << 1 / rate << " " << normBaryonField << std::endl;
 	return 1. / rate;
 }
 
@@ -493,9 +495,9 @@ double PionSpectrum::crossSection(double en) const {
 	// values are given in mb, hence the 1e-31 factor
 	double ethr = 1e9 * eV;
 	double x = en / ethr;
-	double mult = (double) neutralPionMultiplicity(en);
+	// double mult = (double) neutralPionMultiplicity(en);
     double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
-    return res * mult * 1e-31; 
+    return res * 1e-31; 
 }
 
 int PionSpectrum::neutralPionMultiplicity(double en) const {
