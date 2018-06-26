@@ -35,7 +35,6 @@ public:
 	std::vector<double> prob;
 	PionSpectrum();
 	void initSpectrum();
-	double crossSection(double en) const;
 	double energyFraction(double en) const;
 	double computeSlopeInInterval(double xmin, double xmax) const;
 	int neutralPionMultiplicity(double en) const;
@@ -115,6 +114,7 @@ public:
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
 	void setFieldNorm(double normBaryonField);
+	double crossSection(double en) const;
 	double lossLength(int id, double energy) const;
 };
 

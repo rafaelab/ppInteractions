@@ -220,9 +220,18 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 }
 
 double ProtonProtonInteraction::lossLength(int id, double E) const {
-	double rate = pionSpec->crossSection(E) * normBaryonField;
-	// std::cout << pionSpec->neutralPionMultiplicity(E) << " " << pionSpec->crossSection(E) << " " << 1 / rate << " " << normBaryonField << std::endl;
+	double rate = crossSection(E) * normBaryonField;
 	return 1. / rate;
+}
+
+double ProtonProtonInteraction::crossSection(double en) const {
+	// Parametrisation from Kafexhiu et al. 2014
+	// Note: only works for en >> Ethr
+	// values are given in mb, hence the 1e-31 factor
+	double ethr = 1e9 * eV;
+	double x = en / ethr;
+    double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
+    return res * 1e-31; 
 }
 
 LeptonSpectrum::LeptonSpectrum() {
@@ -489,17 +498,6 @@ double PionSpectrum::energyFraction(double en) const {
 	return interpolate2d(random.rand(), en, prob, energy, frac);
 }
 
-double PionSpectrum::crossSection(double en) const {
-	// Parametrisation from Kafexhiu et al. 2014
-	// Note: only works for en >> Ethr
-	// values are given in mb, hence the 1e-31 factor
-	double ethr = 1e9 * eV;
-	double x = en / ethr;
-	// double mult = (double) neutralPionMultiplicity(en);
-    double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
-    return res * 1e-31; 
-}
-
 int PionSpectrum::neutralPionMultiplicity(double en) const {
 	// Parametrisation from Kafexhiu et al. 2014 for the pi0 multiplicity
 	// Parameters are for GEANT4 (will be changed in future releases).
@@ -514,7 +512,7 @@ int PionSpectrum::neutralPionMultiplicity(double en) const {
 }
 
 double PionSpectrum::computeSlopeInInterval(double xmin, double xmax) const {
-	return 2;
+	return 1;
 
 	// // minimum
 	// double x = xmin;
