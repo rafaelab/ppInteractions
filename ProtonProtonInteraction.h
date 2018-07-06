@@ -35,10 +35,19 @@ public:
 	std::vector<double> prob;
 	PionSpectrum();
 	void initSpectrum();
-	double energyFraction(double en) const;
+	double energyFraction(double energy) const;
 	double computeSlopeInInterval(double xmin, double xmax) const;
-	int neutralPionMultiplicity(double en) const;
-	int chargedPionMultiplicity(double en) const;
+	int neutralPionMultiplicity(double energy) const;
+	int chargedPionMultiplicity(double energy) const;
+	double crossSection(double energy) const;
+	double onePionCrossSection(double energy) const;
+	double twoPionCrossSection(double energy) const;
+	double breitWigner(double energy) const;
+	double centreOfMassEnergySquared(double energy) const;
+	double pionMaximumEnergyLab(double energy) const;
+	double pionEnergyCMF(double energy) const;
+	double lorentzFactorCMF(double energy) const;
+	double lorentzFactorLab(double energy) const;
 };
 
 
@@ -74,6 +83,27 @@ public:
 };
 
 /**
+ @class GammaSpectrum
+ @brief Simple protype class to store information about the spectrum of secondary gamma rays.
+ Follows:  Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
+ */
+class GammaSpectrum {
+protected:
+	static const size_t nsamples = 1000;
+	PionSpectrum *pionSpec;
+public:
+	std::vector<double> frac;
+	std::vector<double> energy;
+	std::vector<double> prob;
+	GammaSpectrum();
+	void initSpectrum();
+	double differentialCrossSection(double energy, double energyGamma) const;
+	double Amax(double energy) const;
+	double Fdist(double energy, double Eg) const;
+};
+
+
+/**
  @class ProtonProtonInteraction
  @brief Handles pp interactions following the parametrisations from:
  
@@ -85,7 +115,8 @@ public:
  */
 class ProtonProtonInteraction : public crpropa::Module
 {
-protected:
+// protected:
+public:
 	std::vector<double> tabEnergy;
 	std::vector<double> tabRate;
 	std::vector<double> tabFrac;		
@@ -102,9 +133,10 @@ protected:
 	LeptonSpectrum *electronNuSpec;
 	LeptonSpectrum *muonAntiNuSpec;
 	LeptonSpectrum *muonNuSpec;
+	GammaSpectrum *gammaSpec;
 	PionSpectrum *pionSpec;
 
-public:
+// public:
 	ProtonProtonInteraction(double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
 	void process(crpropa::Candidate *candidate) const;
 	void performInteraction(crpropa::Candidate *candidate) const;
@@ -114,7 +146,7 @@ public:
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
 	void setFieldNorm(double normBaryonField);
-	double crossSection(double en) const;
+	double crossSection(double energy) const;
 	double lossLength(int id, double energy) const;
 };
 

@@ -40,10 +40,15 @@ void ProtonProtonInteraction::initSpectra() {
 	muonNuSpec = new LeptonSpectrum(14);
 	muonAntiNuSpec = new LeptonSpectrum(-14);
 	electronNuSpec = new LeptonSpectrum(12);
+	gammaSpec = new GammaSpectrum();
 	pionSpec = new PionSpectrum();
 	tabFracEnergy = pionSpec->energy;
 	tabFracProb = pionSpec->prob;
 	tabFrac = pionSpec->frac;
+
+	// for (int i = 0; i < gammaSpec->prob.size(); i++){
+	// 	std::cout << gammaSpec->prob[i] / eV << std::endl;//" " << gammaSpec->frac << " " << gammaSpec->prob << std::endl;
+	// }
 
 	/* TEST
   	std::ofstream myfile("test.txt");
@@ -104,7 +109,7 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 	if (en < tabFracEnergy.front() or (en > tabFracEnergy.back()))
 		return;
 
-	// Use Kafexhiu et al. 2014 approach to compute gamma-ray fluxes.
+	// Use Kafexhiu et al. 2014 approach to compute pion multiplicity
 	// Use Kelner et al. 2006 to scale lepton spectra wrt gamma rays.
 	int mult_g = pionSpec->neutralPionMultiplicity(en);
 	int mult_pos = positronSpec->computeMultiplicity(pionSpec, mult_g);
@@ -124,10 +129,10 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		// double x_pi = interpolate2d(en, random.randUniform(fmin, fmax), tabFracEnergy, tabFracProb, tabFrac);
 		double x_pi = interpolate2d(en, random.rand(), tabFracEnergy, tabFracProb, tabFrac);
 		double en_pi = x_pi * en;
-		double x0 = 0.5;
+		double x0 = interpolate2d(en, random.rand(), gammaSpec->energy, gammaSpec->prob, gammaSpec->frac);
 		if (havePhotons) {
 			candidate->addSecondary(22, x0 * en_pi, pos);
-			candidate->addSecondary(22, x0 * en_pi, pos);
+			candidate->addSecondary(22, (1 - x0) * en_pi, pos);
 		}
 		fmax -= x_pi;
 		xtot += x_pi;
@@ -204,9 +209,8 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 	} 
 
 	double dEtot = dEtot_g - dEtot_pos - dEtot_nuMu - dEtot_nuAMu - dEtot_nuEl;
-	double newE = en - dEtot;
+	double newE = std::min(en - dEtot, en); // redundant way to prevent energy gain
 
-	// std::cout << en / eV << " " << newE / eV << " " << std::endl;
 
 	// Guarantees that remaining proton has a lorentz factor of at least 10.
 	// Note that this is redundant with the module MinimumEnergy, but prevents problems.
@@ -228,8 +232,8 @@ double ProtonProtonInteraction::crossSection(double en) const {
 	// Parametrisation from Kafexhiu et al. 2014
 	// Note: only works for en >> Ethr
 	// values are given in mb, hence the 1e-31 factor
-	double ethr = 1e9 * eV;
-	double x = en / ethr;
+	double ethr = 2.797e8 * eV;
+	double x = (en - mass_proton * c_squared) / ethr;
     double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
     return res * 1e-31; 
 }
@@ -423,6 +427,10 @@ void LeptonSpectrum::muonAntiNeutrinoDistribution() {
 
 PionSpectrum::PionSpectrum() {
 	initSpectrum();
+
+	// std::cout << "pi frac: " << frac.size() << "  " << frac[0] << " " << frac[frac.size()-1] << std::endl;
+	// std::cout << "pi prob: " << prob.size() << "  " << prob[0] << " " << prob[prob.size()-1] << std::endl;
+	// std::cout << "pi ener: " << energy.size() << "  " << energy[0] / eV << " " << energy[energy.size()-1] / eV << std::endl;
 }
 
 void PionSpectrum::initSpectrum() {
@@ -446,8 +454,6 @@ void PionSpectrum::initSpectrum() {
 	const double fmin = 1e-6;
 	const double fmax = 1;
 	std::vector<double> f_tmp;
-	std::vector<double> p_tmp;
-	std::vector<double> x_tmp;
 
 	for (int i = 0; i < np; i++) {
 		double dp = log10(fmax / fmin) / np;
@@ -462,6 +468,9 @@ void PionSpectrum::initSpectrum() {
 		Ep = pow(10, Ep);
 		energy.push_back(Ep);
 		double p = 0;
+		double pmax = 0;
+		std::vector<double> p_tmp;
+		std::vector<double> x_tmp;
 		for (int i = 0; i < nx; i++) {
 			double dx = log10(fmax / fmin) / nx;
 			double x = log10(fmin) + (double) (i + 1) * dx;
@@ -474,15 +483,17 @@ void PionSpectrum::initSpectrum() {
 		    double f2 = pow(1 - pow(x, alpha), 4) / pow(pow(1 + r * pow(x, alpha), 3), 4);
 		    double f3 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
 		    double f4 = sqrt(1 - mpi / (x * Ep / eV));
-		    double dummy = p + f1 * f2 * f3 * f4;
-		    if (dummy < std::numeric_limits<double>::max())
+		    double f = p + f1 * f2 * f3 * f4;
+		    if (f < std::numeric_limits<double>::max() and f > std::numeric_limits<double>::min())
 			    p += f1 * f2 * f3 * f4;
 		    x_tmp.push_back(x);
 		    p_tmp.push_back(p);
+		    if (i == nx - 1)
+		    	pmax = p;
 		}
 
 		for (int k = 0; k < p_tmp.size(); k++) {
-			p_tmp[k] /= p;
+			p_tmp[k] /= pmax;
 		}
 
 		for (int k = 0; k < prob.size(); k++) {
@@ -500,18 +511,36 @@ double PionSpectrum::energyFraction(double en) const {
 
 int PionSpectrum::neutralPionMultiplicity(double en) const {
 	// Parametrisation from Kafexhiu et al. 2014 for the pi0 multiplicity
-	// Parameters are for GEANT4 (will be changed in future releases).
-	double a1 = 0.728;
-	double a2 = 0.596;
-	double a3 = 0.491;
-	double a4 = 0.2503;
-	double a5 = 0.117;
-	double csi = (en - 3e9 * eV) / (mass_proton * c_squared);
-	double res = a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
-	return (int) std::floor(res);
+	// Experimental data up to 5 GeV, GEANT 4.10.0 up to 100 TeV, and SYBILL 2.1 above.
+	double Tp = en - mass_proton * c_squared;
+	if (Tp > 1e9 * eV and Tp < 5e9 * eV) { 
+		double q = (Tp - 2.797e8 * eV) / (mass_proton * c_squared);
+		double res = -6e-3 + 0.237 * q - 0.023 * q * q;
+		return (int) std::floor(res);
+	} else if (Tp >= 5e9 * eV and Tp < 1e14 * eV) { 
+		double a1 = 0.728;
+		double a2 = 0.596;
+		double a3 = 0.491;
+		double a4 = 0.2503;
+		double a5 = 0.117;
+		double csi = (Tp - 3e9 * eV) / (mass_proton * c_squared);
+		double res = a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
+		return (int) std::floor(res);
+	} else {
+		double a1 = 5.436;
+		double a2 = 0.254;
+		double a3 = 0.072;
+		double a4 = 0.075;
+		double a5 = 0.166;
+		double csi = (Tp - 3e9 * eV) / (mass_proton * c_squared);
+		double res = a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
+		return (int) std::floor(res);
+	}
 }
 
 double PionSpectrum::computeSlopeInInterval(double xmin, double xmax) const {
+	// In future releases this will be changed to read from a tabulated pion spectrum
+	// Note that this value requires simulations to be run with spectrum E^-1
 	return 1;
 
 	// // minimum
@@ -558,4 +587,241 @@ int PionSpectrum::chargedPionMultiplicity(double en) const {
 	double f2 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
 	double f3 = sqrt(1 - mChargedPion / (x * en));
 	return (int) std::floor(pf * f1 *f2 * f3 * x);
+}
+
+double PionSpectrum::crossSection(double en) const {
+	double Tp = en - mass_proton * c_squared;
+	double Tpthr = 2.797e8 * eV;
+	if (Tp >= Tpthr and Tp < 2e9 * eV) {
+		return onePionCrossSection(en) + twoPionCrossSection(en);
+	} else {
+		double x = Tp / Tpthr;
+	    double piCS = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
+	    return 1e-31 * piCS * neutralPionMultiplicity(en);
+	}
+}
+
+double PionSpectrum::onePionCrossSection(double en) const {
+	double s = centreOfMassEnergySquared(en);
+	double sigma0 = 7.66e-3 * 1e-31;
+	double mpi = 134.9766 * 1e6 * eV;
+	double mp = mass_proton * c_squared;
+	double eta = sqrt(pow(s - mpi * mpi * 4 * mp * mp, 2) - 16 * mpi * mpi * mp * mp) / (2 * mpi * sqrt(s));
+	return sigma0 * pow(eta, 1.95) * (1 + eta + pow(eta, 5)) * pow(breitWigner(s), 1.86);
+}
+
+double PionSpectrum::twoPionCrossSection(double en) const {
+	double Tp = en - mass_proton * c_squared;
+	return 5.7e-31 / (1 + exp(-9.3 * (Tp - 1.4e9 * eV)));
+}
+
+double PionSpectrum::breitWigner(double s) const {
+	double mp = mass_proton * c_squared;
+	double mres = 1.1883e9 * eV;
+	double gammares = 0.2264e9 * eV;
+	double gamma = sqrt(mres * mres * (mres * mres + gammares * gammares));
+	double k = sqrt(8) * mres * gammares * gamma / (M_PI * sqrt(mres * mres + gamma));
+	double f1 = pow(sqrt(s) - mp, 2) - mres * mres;
+	double f2 = mres * gammares;
+	return mp * k / (f1 * f1 + f2 * f2);
+}
+
+double PionSpectrum::centreOfMassEnergySquared(double en) const {
+	double Tp = en - mass_proton * c_squared;
+	return 2 * mass_proton * c_squared * (Tp + 2 * mass_proton * c_squared);
+}
+
+double PionSpectrum::pionMaximumEnergyLab(double en) const {
+	double Tp = en - mass_proton * c_squared;
+	double mp = mass_proton * c_squared;
+	double mpi = 134.9766 * 1e6 * eV;
+	double s = centreOfMassEnergySquared(en);
+	double gammaCM = lorentzFactorCMF(en);
+	double betaCM = sqrt(1 - 1 / (gammaCM * gammaCM));
+	double EpiCM = pionEnergyCMF(en);
+	double PpiCM = sqrt(EpiCM * EpiCM - mpi * mpi);
+	return gammaCM * (EpiCM + PpiCM * betaCM);
+}
+
+double PionSpectrum::pionEnergyCMF(double en) const {
+	double s = centreOfMassEnergySquared(en);
+	double mp = mass_proton * c_squared;
+	double mpi = 134.9766 * 1e6 * eV;
+	return (s - 4 * mp * mp + mpi * mpi) / (2 * sqrt(s));
+}
+
+double PionSpectrum::lorentzFactorCMF(double en) const {
+	double Tp = en - mass_proton * c_squared;
+	double mp = mass_proton * c_squared;
+	double mpi = 134.9766 * 1e6 * eV;
+	double s = centreOfMassEnergySquared(en);
+	return (Tp + 2 * mp) / sqrt(s);
+}
+
+double PionSpectrum::lorentzFactorLab(double en) const {
+	double mpi = 134.9766 * 1e6 * eV;
+	return pionMaximumEnergyLab(en) / mpi;
+}
+
+GammaSpectrum::GammaSpectrum() {
+	pionSpec = new PionSpectrum();
+	initSpectrum();
+	// std::cout << "g frac: " << frac.size() << "  " << frac[0] << " " << frac[frac.size()-1] << std::endl;
+	// std::cout << "g prob: " << prob.size() << "  " << prob[0] << " " << prob[prob.size()-1] << std::endl;
+	// std::cout << "g ener: " << energy.size() << "  " << energy[0] / eV << " " << energy[energy.size()-1] / eV << std::endl;
+
+	// for (int i = 0; i < frac.size(); i++)
+	// 	std::cout << frac[i] << std::endl;
+}
+
+void GammaSpectrum::initSpectrum() {
+	// Initiates the table computed following Eq. 8 of Kafexhiu et al. 2014.
+	// clear previously loaded tables
+	frac.clear();
+	prob.clear();
+	energy.clear();
+
+	const int nx = 600;
+	const int ne = 110; 
+	const int np = 600;
+	double frac_tmp[nx][ne];
+	double prob_tmp[nx];
+	double energy_tmp[ne];
+	const double emin = 1e10 * eV;
+	const double emax = 1e21 * eV;
+	const double fmin = 1e-6;
+	const double fmax = 1;
+	std::vector<double> f_tmp;
+
+	for (int i = 0; i < np; i++) {
+		double dp = log10(fmax / fmin) / np;
+		double p = log10(fmin) + (double) (i + 1) * dp;
+		p = pow(10, p);
+		prob.push_back(p);
+	}
+
+	for (int j = 0; j < ne; j++ ) {	
+		double de = log10(emax / emin) / ne;
+		double Ep = log10(emin) + (double) (j + 1) * de;
+		Ep = pow(10, Ep);
+		energy.push_back(Ep);
+		double p = 0;
+		double pmax = 0;
+		std::vector<double> p_tmp;
+		std::vector<double> x_tmp;
+		for (int i = 0; i < nx; i++) {
+			double dx = log10(fmax / fmin) / nx;
+			double x = log10(fmin) + (double) (i + 1) * dx;
+			x = pow(10, x);
+		    double f = differentialCrossSection(Ep, x * Ep) * x;
+		    if (f < std::numeric_limits<double>::max() and f > std::numeric_limits<double>::min())
+			    p += f;
+		    // std::cout << x << " " << f << " " << p << std::endl;
+		    x_tmp.push_back(x);
+		    p_tmp.push_back(p);
+		    if (i == nx - 1)
+		    	pmax = p;
+		}
+
+		for (int k = 0; k < p_tmp.size(); k++) {
+			p_tmp[k] /= pmax;
+		}
+
+		for (int k = 0; k < prob.size(); k++) {
+			double y = interpolate(prob[k], p_tmp, x_tmp);	
+			frac.push_back(y);
+			// std::cout << Ep / eV << " " << y << " " << prob[k] << std::endl;
+		}
+	}
+}
+
+double GammaSpectrum::differentialCrossSection(double en, double Eg) const {
+	// std::cout << en / eV << " " << Eg / eV << " " << Fdist(en, Eg) << std::endl;
+	return Amax(en) * Fdist(en, Eg);
+}
+
+double GammaSpectrum::Amax(double en) const {
+	// GEANT 4.10.0 below 100 TeV, SYBILL 2.1 above
+	// See Eq. 12 Kafexhiu et al. 2014, and Table VII.
+
+	double Tp = en - mass_proton * c_squared;
+	double Tpthr = 2.797e8 * eV;
+
+	double b0, b1, b2, b3;
+	if (Tp >= 1e9 * eV and Tp < 5e9 * eV) {
+		b1 = 9.53;
+		b2 = 0.52;
+		b3 = 0.054;
+	} else if (Tp >= 5e9 * eV and Tp < 1e14 * eV) {
+		b1 = 9.13;
+		b2 = 0.35;
+		b3 = 9.7e-3;
+	} else {
+		b1 = 10.77;
+		b2 = 0.412;
+		b3 = 0.01264;
+	}
+	double Epimax = pionSpec->pionMaximumEnergyLab(en);
+
+	double Amax = 0;
+	if (Tp >= Tpthr and Tp < 1e9 * eV) {
+		double b0 = 5.9;
+		Amax = b0 * pionSpec->crossSection(en) / Epimax;
+	} else {
+		double t = Tp / (mass_proton * c_squared);
+		Amax = b1 * pow(t, -b2) * exp(b3 * log(t) * log(t)) * pionSpec->crossSection(en) / (mass_proton * c_squared);
+	}	
+	// cheating to fix differential cross sections, which are wrong by a log(10)^2 factor.
+	// note that this won't affect the results, since dSigma/dE_gamma won't be directly used, only when normalised.
+	return Amax / pow(log(10), 2);
+}
+
+double GammaSpectrum::Fdist(double en, double Eg) const {
+	// GEANT 4.10.0 below 100 TeV, SYBILL 2.1 above
+	// See Eq. 11 Kafexhiu et al. 2014, and Table V.
+	double mp = mass_proton * c_squared;
+	double mpi = 134.9766 * 1e6 * eV;
+	double lfCMF = pionSpec->lorentzFactorCMF(en);
+	double lfLab = pionSpec->lorentzFactorLab(en);
+	double betaLab = sqrt(1 - 1 / (lfLab * lfLab));
+	double Egmax = 0.5 * mpi * lfLab * (1 + betaLab);
+	double Yg = Eg + mpi * mpi / (4 * Eg);
+	double Ygmax = Egmax + mpi * mpi / (4 * Egmax);
+	double Xg = (Yg - mpi) / (Ygmax - mpi);
+	
+	double Tp = en - mass_proton * c_squared;
+	double Tpthr = 2.797e8 * eV;
+	double t = Tp / (mass_proton * c_squared);
+	double kappa = 3.29 - 0.2 * pow(t, -1.5);
+	double q = (Tp - 1e9 * eV) / mp;
+	double mu = 5 / 4 * pow(q, 5 / 4) * exp(- 5 / 4 * q);
+	double alpha, beta, gamma, lambda;
+	if (Tp >= Tpthr and Tp < 1e9 * eV) {
+		lambda = 1;
+		alpha = 1.;
+		beta = kappa;
+		gamma = 0;
+	} else if (Tp >= 1e9 * eV and Tp < 4e9 * eV) {
+		lambda = 3;
+		alpha = 1.;
+		beta = mu + 2.45;
+		gamma = mu + 1.45;
+	} else if (Tp >= 4e9 * eV and Tp < 2e10 * eV) {
+		lambda = 3;
+		alpha = 1.;
+		beta = 1.5 * mu + 4.95;
+		gamma = mu + 1.50;
+	} else if (Tp >= 2e10 * eV and Tp < 1e14 * eV) {
+		lambda = 3;
+		alpha = 0.5;
+		beta = 4.2;
+		gamma = 1.;
+	} else {
+		lambda = 3.55;
+		alpha = 0.5;
+		beta = 3.6;
+		gamma = 1;
+	}
+	double C = lambda * mpi / Ygmax;
+	return pow(1 - pow(Xg, alpha), beta) / pow(1 + Xg / C, gamma);
 }
