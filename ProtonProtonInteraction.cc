@@ -10,7 +10,27 @@ ProtonProtonInteraction::ProtonProtonInteraction(double normBaryonField, bool ph
 	setHaveNeutrinos(neutrinos);
 	setHavePhotons(photons);
 	setLimit(limit);
+	setIsDensityConstant(true);
 	setDescription("ProtonProtonInteraction");
+}
+
+ProtonProtonInteraction::ProtonProtonInteraction(ref_ptr<ScalarGrid> grid, double normBaryonField, bool photons, bool electrons, bool neutrinos, double limit) : Module() {
+	
+	initSpectra();
+	setFieldNorm(normBaryonField);
+	setHaveElectrons(electrons);
+	setHaveNeutrinos(neutrinos);
+	setHavePhotons(photons);
+	setLimit(limit);
+	setDescription("ProtonProtonInteraction");
+	setIsDensityConstant(false);
+	if (normBaryonField != 1) 
+		scaleGrid(grid, normBaryonField);
+	densityGrid = grid;
+}
+
+void ProtonProtonInteraction::setIsDensityConstant(bool b) {
+	isDensityConstant = b;
 }
 
 void ProtonProtonInteraction::setHaveElectrons(bool b) {
@@ -75,7 +95,12 @@ void ProtonProtonInteraction::process(Candidate *candidate) const {
 	do {
 		double E = candidate->current.getEnergy();
 		double z = candidate->getRedshift();
-		double rate = 1 / lossLength(id, E);
+		double rate;
+		if (isDensityConstant == false) {
+			Vector3d pos = candidate->current.getPosition();
+			rate = 1 / lossLength(id, E, pos);
+		} else
+			rate = 1 / lossLength(id, E);
 
 		// find interaction mode with minimum random decay distance
 		Random &random = Random::instance();
@@ -225,6 +250,11 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 
 double ProtonProtonInteraction::lossLength(int id, double E) const {
 	double rate = crossSection(E) * normBaryonField;
+	return 1. / rate;
+}
+
+double ProtonProtonInteraction::lossLength(int id, double E, Vector3d position) const {
+	double rate = crossSection(E) * densityGrid->interpolate(position);
 	return 1. / rate;
 }
 

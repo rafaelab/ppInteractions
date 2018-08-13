@@ -12,6 +12,8 @@
 #include <crpropa/ParticleID.h>
 #include <crpropa/ParticleMass.h>
 #include <crpropa/Random.h>
+#include <crpropa/Grid.h>
+#include <crpropa/GridTools.h>
 
 #ifdef _OPENMP
 	#include "omp.h"
@@ -123,11 +125,14 @@ public:
 	std::vector<double> tabFracProb;
 	std::vector<double> tabFracEnergy;
 
+	crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid;
+
 	bool haveElectrons;
 	bool havePhotons;
 	bool haveNeutrinos;
 	double limit;
 	double normBaryonField;
+	bool isDensityConstant;
 
 	LeptonSpectrum *positronSpec;
 	LeptonSpectrum *electronNuSpec;
@@ -138,6 +143,7 @@ public:
 
 // public:
 	ProtonProtonInteraction(double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
+	ProtonProtonInteraction(crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid, double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
 	void process(crpropa::Candidate *candidate) const;
 	void performInteraction(crpropa::Candidate *candidate) const;
 	void initSpectra();
@@ -146,7 +152,9 @@ public:
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
 	void setFieldNorm(double normBaryonField);
+	void setIsDensityConstant(bool densityConstant);
 	double crossSection(double energy) const;
 	double lossLength(int id, double energy) const;
+	double lossLength(int id, double energy, crpropa::Vector3d position) const;
 };
 
