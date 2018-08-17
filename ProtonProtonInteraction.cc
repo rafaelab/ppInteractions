@@ -2,7 +2,7 @@
 
 using namespace crpropa;
 
-ProtonProtonInteraction::ProtonProtonInteraction(double normBaryonField, bool photons, bool electrons, bool neutrinos, double limit) : Module() {
+ProtonProtonInteraction::ProtonProtonInteraction(double normBaryonField, bool photons, bool electrons, bool neutrinos, double thinning, double limit) : Module() {
 
 	initSpectra();
 	setFieldNorm(normBaryonField);
@@ -53,6 +53,10 @@ void ProtonProtonInteraction::setFieldNorm(double x) {
 
 void ProtonProtonInteraction::setLimit(double l) {
 	limit = l;
+}
+
+void ProtonProtonInteraction::setThinning(double thinning) {
+	thinning = thinning;
 }
 
 void ProtonProtonInteraction::initSpectra() {
@@ -125,6 +129,8 @@ void ProtonProtonInteraction::process(Candidate *candidate) const {
 void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 	
 	double en = candidate->current.getEnergy();
+	double w0 = candidate->getWeight();
+
 	Random &random = Random::instance();
 
 	// select position of secondary within step
@@ -156,8 +162,15 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		double en_pi = x_pi * en;
 		double x0 = interpolate2d(en, random.rand(), gammaSpec->energy, gammaSpec->prob, gammaSpec->frac);
 		if (havePhotons) {
-			candidate->addSecondary(22, x0 * en_pi, pos);
-			candidate->addSecondary(22, (1 - x0) * en_pi, pos);
+			double f = x0 * en_pi / en;
+			if (random.rand() < pow(f, thinning)) {
+				double w = w0 / pow(f, thinning);
+				candidate->addSecondary(22, x0 * en_pi, pos, w);
+			}
+			if (random.rand() < pow(1 - f, thinning)) {
+				double w = w0 / pow(1 - f, thinning);
+				candidate->addSecondary(22, (1 - x0) * en_pi, pos, w);
+			}			
 		}
 		fmax -= x_pi;
 		xtot += x_pi;
@@ -174,7 +187,11 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		double en_pi = x_pi * en;
 		double x0 = interpolate(random.randUniform(fmin, fmax), positronSpec->prob, positronSpec->frac);
 		if (haveElectrons) {
-			candidate->addSecondary(-11, x0 * en_pi, pos);
+			double f = x0 * en_pi / en;
+			if (random.rand() < pow(f, thinning)) {
+				double w = w0 / pow(f, thinning);
+				candidate->addSecondary(-11, x0 * en_pi, pos, w);
+			}
 		}
 		fmax -= x_pi;
 		xtot += x_pi;
@@ -191,7 +208,11 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		double en_pi = x_pi * en;
 		double x0 = interpolate(random.randUniform(fmin, fmax), muonNuSpec->prob, muonNuSpec->frac);
 		if (haveNeutrinos) {
-			candidate->addSecondary(14, x0 * en_pi, pos);
+			double f = x0 * en_pi / en;
+			if (random.rand() < pow(f, thinning)) {
+				double w = w0 / pow(f, thinning);
+				candidate->addSecondary(14, x0 * en_pi, pos, w);
+			}
 		}
 		fmax -= x_pi;
 		xtot += x_pi;
@@ -208,7 +229,11 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		double en_pi = x_pi * en;
 		double x0 = interpolate(random.randUniform(fmin, fmax), muonAntiNuSpec->prob, muonAntiNuSpec->frac);
 		if (haveNeutrinos) {
-			candidate->addSecondary(-14, x0 * en_pi, pos);
+			double f = x0 * en_pi / en;
+			if (random.rand() < pow(f, thinning)) {
+				double w = w0 / pow(f, thinning);
+				candidate->addSecondary(-14, x0 * en_pi, pos, w);
+			}
 		}
 		fmax -= x_pi;
 		xtot += x_pi;
@@ -225,7 +250,11 @@ void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
 		double en_pi = x_pi * en;
 		double x0 = interpolate(random.randUniform(fmin, fmax), electronNuSpec->prob, electronNuSpec->frac);
 		if (haveNeutrinos) {
-			candidate->addSecondary(12, x0 * en_pi, pos);
+			double f = x0 * en_pi / en;
+			if (random.rand() < pow(f, thinning)) {
+				double w = w0 / pow(f, thinning);
+				candidate->addSecondary(12, x0 * en_pi, pos, w);
+			}
 		}
 		fmax -= x_pi;
 		xtot += x_pi;

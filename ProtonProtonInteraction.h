@@ -131,6 +131,7 @@ public:
 	bool havePhotons;
 	bool haveNeutrinos;
 	double limit;
+	double thinning;
 	double normBaryonField;
 	bool isDensityConstant;
 
@@ -142,12 +143,13 @@ public:
 	PionSpectrum *pionSpec;
 
 // public:
-	ProtonProtonInteraction(double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
+	ProtonProtonInteraction(double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double thinning = 0, double limit = 0.1);
 	ProtonProtonInteraction(crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid, double normBaryonField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
 	void process(crpropa::Candidate *candidate) const;
 	void performInteraction(crpropa::Candidate *candidate) const;
 	void initSpectra();
 	void setLimit(double limit);
+	void setThinning(double thinning);
 	void setHaveElectrons(bool electrons);
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
