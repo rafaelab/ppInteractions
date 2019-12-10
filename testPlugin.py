@@ -1,9 +1,6 @@
 from crpropa import *
-import ProtonProtonInteraction as pp
+import NucleusNucleusInteraction as ppint
 
-
-dataDir =  '../../data/ProtonProtonInteractions/'
-field = 'PowerLaw-2.50'
 
 obs = Observer()
 obs.add(ObserverPoint())
@@ -11,12 +8,16 @@ output = TextOutput('test.txt', Output.Event1D)
 output.setEnergyScale(eV)
 obs.onDetection(output)
 
+nn = ppint.NucleusNucleusInteraction(1.)
+pd = ppint.ParticleDecay()
+
 sim = ModuleList()
 
 sim.add(SimplePropagation())
 sim.add(MaximumTrajectoryLength(100 * Mpc))
 sim.add(MinimumEnergy(1e9 * eV))
-sim.add(pp.ProtonProtonInteraction(field, dataDir, 1e-6, True, True, True))
+sim.add(pp.NucleusNucleusInteraction(1e-3))
+sim.add(pp.ParticleDecay())
 sim.add(obs)
 
 source = Source()
