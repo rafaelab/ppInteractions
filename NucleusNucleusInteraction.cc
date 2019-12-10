@@ -1,93 +1,243 @@
-#include "ProtonProtonInteraction.h"
+#include "NucleusNucleusInteraction.h"
 
 using namespace crpropa;
 
-ProtonProtonInteraction::ProtonProtonInteraction(double normBaryonField, bool photons, bool electrons, bool neutrinos, double thinning, double limit) : Module() {
-
-	initSpectra();
-	setFieldNorm(normBaryonField);
+NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, bool photons, bool electrons, bool neutrinos, double thinning, double limit) : Module() {
+	setFieldNorm(normMatterField);
 	setHaveElectrons(electrons);
 	setHaveNeutrinos(neutrinos);
 	setHavePhotons(photons);
 	setLimit(limit);
 	setIsDensityConstant(true);
-	setDescription("ProtonProtonInteraction");
+	initMesonSpectra();
+	setDescription("NucleusNucleusInteraction");
 }
 
-ProtonProtonInteraction::ProtonProtonInteraction(ref_ptr<ScalarGrid> grid, double normBaryonField, bool photons, bool electrons, bool neutrinos, double limit) : Module() {
-	
-	initSpectra();
-	setFieldNorm(normBaryonField);
+NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<ScalarGrid> grid, double normMatterField, bool photons, bool electrons, bool neutrinos, double limit) : Module() {
+	// initSpectra();
+	setFieldNorm(normMatterField);
 	setHaveElectrons(electrons);
 	setHaveNeutrinos(neutrinos);
 	setHavePhotons(photons);
 	setLimit(limit);
-	setDescription("ProtonProtonInteraction");
+	setDescription("NucleusNucleusInteraction");
 	setIsDensityConstant(false);
-	if (normBaryonField != 1) 
-		scaleGrid(grid, normBaryonField);
+	if (normMatterField != 1) 
+		scaleGrid(grid, normMatterField);
+	initMesonSpectra();
 	densityGrid = grid;
 }
 
-void ProtonProtonInteraction::setIsDensityConstant(bool b) {
+void NucleusNucleusInteraction::setIsDensityConstant(bool b) {
 	isDensityConstant = b;
 }
 
-void ProtonProtonInteraction::setHaveElectrons(bool b) {
+void NucleusNucleusInteraction::setHaveElectrons(bool b) {
 	haveElectrons = b;
 }
 
-void ProtonProtonInteraction::setHavePhotons(bool b) {
+void NucleusNucleusInteraction::setHavePhotons(bool b) {
 	havePhotons = b;
 }
 
-void ProtonProtonInteraction::setHaveNeutrinos(bool b) {
+void NucleusNucleusInteraction::setHaveNeutrinos(bool b) {
 	haveNeutrinos = b;
 }
 
-void ProtonProtonInteraction::setFieldNorm(double x) {
+void NucleusNucleusInteraction::setFieldNorm(double x) {
 	if (x == 0) 
 		x = std::numeric_limits<double>::min();
-	normBaryonField = x;
+	normMatterField = x;
 }
 
-void ProtonProtonInteraction::setLimit(double l) {
+void NucleusNucleusInteraction::setLimit(double l) {
 	limit = l;
 }
 
-void ProtonProtonInteraction::setThinning(double thinning) {
+void NucleusNucleusInteraction::setThinning(double thinning) {
 	thinning = thinning;
 }
 
-void ProtonProtonInteraction::initSpectra() {
-	positronSpec = new LeptonSpectrum(-11);
-	muonNuSpec = new LeptonSpectrum(14);
-	muonAntiNuSpec = new LeptonSpectrum(-14);
-	electronNuSpec = new LeptonSpectrum(12);
-	gammaSpec = new GammaSpectrum();
-	pionSpec = new PionSpectrum();
-	tabFracEnergy = pionSpec->energy;
-	tabFracProb = pionSpec->prob;
-	tabFrac = pionSpec->frac;
-
-	// for (int i = 0; i < gammaSpec->prob.size(); i++){
-	// 	std::cout << gammaSpec->prob[i] / eV << std::endl;//" " << gammaSpec->frac << " " << gammaSpec->prob << std::endl;
-	// }
-
-	/* TEST
-  	std::ofstream myfile("test.txt");
-  	int k = 0;
-  	for (int i = 0; i < tabFracEnergy.size(); i++) {
-  		for (int j = 0; j < tabFracProb.size(); j++) {
-  			myfile << tabFracEnergy[i] / eV << "\t" << tabFracProb[j] << "\t" << tabFracEnergy[k] << std::endl;
-  			k++;
-  		}
-  	}
-	myfile.close();
-	*/
+void NucleusNucleusInteraction::decayAll(bool b) {
+	this->decayNeutralPion(b);
+	this->decayChargedPion(b);
+	this->decayMuon(b);
 }
 
-void ProtonProtonInteraction::process(Candidate *candidate) const {
+void NucleusNucleusInteraction::decayNeutralPion(bool b) {
+	doDecayNeutralPion = b;
+}
+
+void NucleusNucleusInteraction::decayChargedPion(bool b) {
+	doDecayChargedPion = b;
+}
+
+void NucleusNucleusInteraction::decayMuon(bool b) {
+	doDecayMuon = b;
+}
+
+
+void NucleusNucleusInteraction::initMesonSpectra() {
+	// Initialise pion spectra.
+	// Follows Eqs. 12 and 13 from:
+	//  Kelner et al. 74 (2006) 034018.
+	// Note that this parametrisation is implemented for older versions of SIBYLL.
+	// QGSJet is not implemented as SYBILL provides a better fit.
+
+	// clear previously loaded tables
+	logIncidentEnergy.clear();
+	neutralPionFraction.clear();
+	chargedPionFraction.clear();
+	etaMesonFraction.clear();
+	probabilities.clear();
+
+	const int nx = 100000; // number of points to sample energy fraction
+	const int np = 100000; // number of points to sample probability array
+
+
+	// Create an array with incident particle energies for sampling
+	const int ne = 120; // number of points to sample
+	const double emin = 1e10 * eV; // minimum proton energy
+	const double emax = 1e22 * eV; // maximum proton energy
+	double dle = log10(emax / emin) / ne;
+	for (int i = 0; i < ne; i++) {
+		double en = log10(emin) + i * dle;
+		logIncidentEnergy.push_back(en);
+	}
+
+	// Create an array with energy fractions
+	const double xmin = 1e-8; // minimum energy fraction
+	const double xmax = 1; // maximum energy fraction
+	double dlx = log10(xmax / xmin) / nx;
+	for (int i = 0; i < nx + 1; i++) {
+		double x_ = log10(xmin) + i * dlx;
+		logFraction.push_back(x_);
+	}
+
+	// Create an array with probabilities for sampling
+	const double pmin = 1e-4; // minimum energy fraction
+	const double pmax = 1; // maximum energy fraction
+	double dlp = log10(pmax / pmin) / np;
+	for (int i = 0; i < np; i++) {
+		double p_ = log10(pmin) + i * dlp;
+		probabilities.push_back(pow(10, p_));
+	}
+
+	for (int i = 0; i < ne; i++) {
+
+		// For a fixed incident proton energy, get distribution of energy fractions.
+		std::vector<double> fCharged;
+		std::vector<double> fNeutral;
+		std::vector<double> fEtaMeson;
+		std::vector<double> logFCharged;
+		std::vector<double> logFNeutral;
+		std::vector<double> logFEtaMeson;
+		double ei = pow(10, logIncidentEnergy[i]);
+
+		for (int j = 0; j < nx + 1; j++) {
+
+			// Pions
+			double x = pow(10, logFraction[j]);
+			double epi = x * ei;
+			double l = log(ei / TeV);
+			double a = 3.67 + 0.83 * l + 0.075 * l * l;
+			double alpha = 0.98 / sqrt(a);
+			double bpi = a + 0.25;
+			double r = 2.6 / sqrt(a);
+			double xalpha = pow(x, alpha);
+			double pf_F = 4 * alpha * bpi * xalpha / x;
+			double f1_F = pow((1 - xalpha) / (1 + r * xalpha * (1 - xalpha)), 4);
+			double f2_F = 1. / (1 - xalpha) + r * (1 - 2 * xalpha) / (1 + r * xalpha * (1 - xalpha));
+			double f3_F_a = sqrt(std::max(0., 1. - (mNeutralPion * c_squared) / epi));
+			double f3_F_b = sqrt(std::max(0., 1. - (mChargedPion * c_squared) / epi));
+			double f_a = pf_F * f1_F * f2_F * f3_F_a;
+			double f_b = pf_F * f1_F * f2_F * f3_F_b; 
+			fCharged.push_back(f_b * x);
+			fNeutral.push_back(f_a * x);
+
+			// Eta mesons
+			double f4_F = (0.55 + 0.028 * log(x)) * std::max(0., 1 - mEtaMeson * c_squared / epi);
+			fEtaMeson.push_back(f4_F * fNeutral[j]);
+
+			logFCharged.push_back(0);
+			logFNeutral.push_back(0);
+			logFEtaMeson.push_back(0);
+		}
+		fCharged.resize(nx);
+		fNeutral.resize(nx);
+		fEtaMeson.resize(nx);
+		logFCharged.resize(nx);
+		logFNeutral.resize(nx);
+		logFEtaMeson.resize(nx);
+
+		std::partial_sum(fNeutral.begin(), fNeutral.end(), fNeutral.begin());
+		std::partial_sum(fCharged.begin(), fCharged.end(), fCharged.begin());
+		std::partial_sum(fEtaMeson.begin(), fEtaMeson.end(), fEtaMeson.begin());
+
+
+		// Normalise distribution
+		double normNeutral = 1. / *std::max_element(fNeutral.begin(), fNeutral.end());
+		double normCharged = 1. / *std::max_element(fCharged.begin(), fCharged.end());
+		double normEtaMeson = 1. / *std::max_element(fEtaMeson.begin(), fEtaMeson.end());
+
+		for (int j = 0; j < fNeutral.size(); j++) {
+			fNeutral[j] *= normNeutral;
+			fCharged[j] *= normCharged;
+			fEtaMeson[j] *= normEtaMeson;
+			logFNeutral[j] = log10(fNeutral[j]);
+			logFCharged[j] = log10(fCharged[j]);
+			logFEtaMeson[j] = log10(fEtaMeson[j]);
+		}
+
+		// Invert distribution and sample from it
+		for (int j = 0; j < probabilities.size(); j++) {
+			double y1 = interpolate(log10(probabilities[j]), logFNeutral, logFraction);
+			double y2 = interpolate(log10(probabilities[j]), logFCharged, logFraction);
+			double y3 = interpolate(log10(probabilities[j]), logFEtaMeson, logFraction);
+			neutralPionFraction.push_back(pow(10, y1));
+			chargedPionFraction.push_back(pow(10, y2));
+			etaMesonFraction.push_back(pow(10, y3));
+		}
+	}
+}
+
+double NucleusNucleusInteraction::crossSection(double en) const {
+	// Parametrisation from:
+	//   Kafexhiu et al. PRD 90 (2014) 123014.
+	// Note: only works for en >> Ethr
+	// Values are given in mb, hence the 1e-31 factor
+	double ethr = 2.797e8 * eV;
+	double x = (en - mass_proton * c_squared) / ethr;
+	double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1. / x, 1.9), 3);
+	return res * 1e-31; 
+}
+
+double NucleusNucleusInteraction::energyFractionChargedPion(double energy, double xmin, double xmax) const {
+	Random &random = Random::instance();
+	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, chargedPionFraction);
+}
+
+double NucleusNucleusInteraction::energyFractionNeutralPion(double energy, double xmin, double xmax) const {
+	Random &random = Random::instance();
+	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, neutralPionFraction);
+}
+
+double NucleusNucleusInteraction::energyFractionEtaMeson(double energy, double xmin, double xmax) const {
+	Random &random = Random::instance();
+	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, etaMesonFraction);
+}
+
+double NucleusNucleusInteraction::lossLength(int id, double energy) const {
+	double rate = crossSection(energy) * normMatterField;
+	return 1. / rate;
+}
+
+double NucleusNucleusInteraction::lossLength(int id, double energy, Vector3d position) const {
+	double rate = crossSection(energy) * densityGrid->interpolate(position);
+	return 1. / rate;
+}
+
+void NucleusNucleusInteraction::process(Candidate *candidate) const {
 
 	// check if nucleus
 	int id = candidate->current.getId();
@@ -97,14 +247,14 @@ void ProtonProtonInteraction::process(Candidate *candidate) const {
 	// the loop should be processed at least once for limiting the next step
 	double step = candidate->getCurrentStep();
 	do {
-		double E = candidate->current.getEnergy();
+		double energy = candidate->current.getEnergy();
 		double z = candidate->getRedshift();
 		double rate;
 		if (isDensityConstant == false) {
 			Vector3d pos = candidate->current.getPosition();
-			rate = 1 / lossLength(id, E, pos);
+			rate = 1. / lossLength(id, energy, pos);
 		} else
-			rate = 1 / lossLength(id, E);
+			rate = 1. / lossLength(id, energy);
 
 		// find interaction mode with minimum random decay distance
 		Random &random = Random::instance();
@@ -126,761 +276,554 @@ void ProtonProtonInteraction::process(Candidate *candidate) const {
 	} while (step > 0);
 }
 
-void ProtonProtonInteraction::performInteraction(Candidate *candidate) const {
+void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 	
-	double en = candidate->current.getEnergy();
+	double energy = candidate->current.getEnergy();
 	double w0 = candidate->getWeight();
 
 	Random &random = Random::instance();
 
-	// select position of secondary within step
+	// Select position of secondary within step.
 	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
 
-	// check if in tabulated energy range
-	if (en < tabFracEnergy.front() or (en > tabFracEnergy.back()))
+	// Check if in tabulated energy range.
+	if (log10(energy) < logIncidentEnergy.front() or (log10(energy) > logIncidentEnergy.back()))
 		return;
 
-	// Use Kafexhiu et al. 2014 approach to compute pion multiplicity
-	// Use Kelner et al. 2006 to scale lepton spectra wrt gamma rays.
-	int mult_g = pionSpec->neutralPionMultiplicity(en);
-	int mult_pos = positronSpec->computeMultiplicity(pionSpec, mult_g);
-	int mult_nuEl = electronNuSpec->computeMultiplicity(pionSpec, mult_g);
-	int mult_nuMu = muonNuSpec->computeMultiplicity(pionSpec, mult_g);
-	int mult_nuAMu = muonAntiNuSpec->computeMultiplicity(pionSpec, mult_g);
-
-	// if (en / eV > 1e13)
-	// std::cout << en / eV << " " << mult_g << " " << mult_pos << " " << mult_nuMu <<  " " << mult_nuAMu << " " << mult_nuEl << std::endl;
-
-	double fmin = 1e-6;
-	double fmax = 1;
-	int i = 0;
+	int counter = 0;
 	double xtot = 0;
-	double dEtot_g = 0;
-	while(i < mult_g and xtot < 1 and fmax > fmin) {
-		// double x_pi = interpolate2d(en, random.randUniform(fmin, fmax), tabFracEnergy, tabFracProb, tabFrac);
-		double x_pi = interpolate2d(en, random.rand(), tabFracEnergy, tabFracProb, tabFrac);
-		double en_pi = x_pi * en;
-		double x0 = interpolate2d(en, random.rand(), gammaSpec->energy, gammaSpec->prob, gammaSpec->frac);
-		if (havePhotons) {
-			double f = x0 * en_pi / en;
-			if (random.rand() < pow(f, thinning)) {
-				double w = w0 / pow(f, thinning);
-				candidate->addSecondary(22, x0 * en_pi, pos, w);
-			}
-			if (random.rand() < pow(1 - f, thinning)) {
-				double w = w0 / pow(1 - f, thinning);
-				candidate->addSecondary(22, (1 - x0) * en_pi, pos, w);
-			}			
-		}
-		fmax -= x_pi;
-		xtot += x_pi;
-		dEtot_g += x0 * en_pi;
-		i++;
-	} 
-	xtot = 0;
-	fmax = 1;
-	i = 0;
-	double dEtot_pos = 0;
-	while(i < mult_pos and xtot < 1 and fmax > fmin) {
-		// double x_pi = interpolate2d(en, random.randUniform(fmin, fmax), tabFracEnergy, tabFracProb, tabFrac);
-		double x_pi = interpolate2d(en, random.rand(), tabFracEnergy, tabFracProb, tabFrac);
-		double en_pi = x_pi * en;
-		double x0 = interpolate(random.randUniform(fmin, fmax), positronSpec->prob, positronSpec->frac);
-		if (haveElectrons) {
-			double f = x0 * en_pi / en;
-			if (random.rand() < pow(f, thinning)) {
-				double w = w0 / pow(f, thinning);
-				candidate->addSecondary(-11, x0 * en_pi, pos, w);
-			}
-		}
-		fmax -= x_pi;
-		xtot += x_pi;
-		dEtot_pos += x0 * en_pi;
-		i++;
-	} 
-	xtot = 0;
-	fmax = 1;
-	i = 0;
-	double dEtot_nuMu = 0;
-	while(i < mult_nuMu and xtot < 1 and fmax > fmin) {
-		// double x_pi = interpolate2d(en, random.randUniform(fmin, fmax), tabFracEnergy, tabFracProb, tabFrac);
-		double x_pi = interpolate2d(en, random.rand(), tabFracEnergy, tabFracProb, tabFrac);
-		double en_pi = x_pi * en;
-		double x0 = interpolate(random.randUniform(fmin, fmax), muonNuSpec->prob, muonNuSpec->frac);
-		if (haveNeutrinos) {
-			double f = x0 * en_pi / en;
-			if (random.rand() < pow(f, thinning)) {
-				double w = w0 / pow(f, thinning);
-				candidate->addSecondary(14, x0 * en_pi, pos, w);
-			}
-		}
-		fmax -= x_pi;
-		xtot += x_pi;
-		dEtot_nuMu += x0 * en_pi;
-		i++;
-	} 
-	xtot = 0;
-	fmax = 1;
-	i = 0;
-	double dEtot_nuAMu = 0;
-	while(i < mult_nuAMu and xtot < 1 and fmax > fmin) {
-		// double x_pi = interpolate2d(en, random.randUniform(fmin, fmax), tabFracEnergy, tabFracProb, tabFrac);
-		double x_pi = interpolate2d(en, random.rand(), tabFracEnergy, tabFracProb, tabFrac);
-		double en_pi = x_pi * en;
-		double x0 = interpolate(random.randUniform(fmin, fmax), muonAntiNuSpec->prob, muonAntiNuSpec->frac);
-		if (haveNeutrinos) {
-			double f = x0 * en_pi / en;
-			if (random.rand() < pow(f, thinning)) {
-				double w = w0 / pow(f, thinning);
-				candidate->addSecondary(-14, x0 * en_pi, pos, w);
-			}
-		}
-		fmax -= x_pi;
-		xtot += x_pi;
-		dEtot_nuMu += x0 * en_pi;
-		i++;
-	} 
-	xtot = 0;
-	fmax = 1;
-	i = 0;
-	double dEtot_nuEl = 0;
-	while(i < mult_nuEl and xtot < 1 and fmax > fmin) {
-		// double x_pi = interpolate2d(en, random.randUniform(fmin, fmax), tabFracEnergy, tabFracProb, tabFrac);
-		double x_pi = interpolate2d(en, random.rand(), tabFracEnergy, tabFracProb, tabFrac);
-		double en_pi = x_pi * en;
-		double x0 = interpolate(random.randUniform(fmin, fmax), electronNuSpec->prob, electronNuSpec->frac);
-		if (haveNeutrinos) {
-			double f = x0 * en_pi / en;
-			if (random.rand() < pow(f, thinning)) {
-				double w = w0 / pow(f, thinning);
-				candidate->addSecondary(12, x0 * en_pi, pos, w);
-			}
-		}
-		fmax -= x_pi;
-		xtot += x_pi;
-		dEtot_nuEl += x0 * en_pi;
-		i++;
-	} 
+	while (xtot < 1) {
 
-	double dEtot = dEtot_g - dEtot_pos - dEtot_nuMu - dEtot_nuAMu - dEtot_nuEl;
-	double newE = std::min(en - dEtot, en); // redundant way to prevent energy gain
+		double x1 = energyFractionNeutralPion(energy, 1e-10, 1 - xtot);
+		double x2 = energyFractionChargedPion(energy, 1e-10, 1 - xtot);
+		double x3 = energyFractionChargedPion(energy, 1e-10, 1 - xtot);
+		double x4 = energyFractionEtaMeson(energy, 1e-10, 1 - xtot);
 
+		double y = (x1 + x2 + x3 + x4);
+		double x = 0;
+		double r = random.rand();
+		int id;
+		if (r < x1 / y) {
+			id = 111;
+			x = x1;
+		}
+		else if (r >= x1 / y && r < (x1 + x2) / y) {
+			id = 211;
+			x = x2;
+		}
+		else if (r >= (x1 + x2) / y && r < (x1 + x2 + x3) / y) {
+			id = 211;
+			x = x3;
+		}
+		else {
+			id = 221;
+			x = x4;
+		}
 
-	// Guarantees that remaining proton has a lorentz factor of at least 10.
-	// Note that this is redundant with the module MinimumEnergy, but prevents problems.
-	if (newE < 1e10 * eV) {
+		// std::cout << id << " " << E / eV << " " << x << " " << xtot << std::endl;
 		candidate->setActive(false);
-		return;
+
+		xtot += x;
+
+		if (random.rand() < pow(x, thinning)) {
+			double w = w0 / pow(x, thinning);
+			candidate->addSecondary(id, x * energy, pos, w);
+		}
+
+		
+		// force stop
+		if (1 - xtot < 3e-6)
+			break;
+		if (counter >= 100)
+			break;
+		counter++;
 	}
-
-	candidate->current.setEnergy(newE);
-	// candidate->setActive(false);
 }
 
-double ProtonProtonInteraction::lossLength(int id, double E) const {
-	double rate = crossSection(E) * normBaryonField;
-	return 1. / rate;
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+ParticleDecay::ParticleDecay(bool photons, bool electrons, bool neutrinos, bool muons, double thinning, double limit) : Module() {
+	setHaveElectrons(electrons);
+	setHaveNeutrinos(neutrinos);
+	setHavePhotons(photons);
+	setHaveMuons(muons);
+	setLimit(limit);
+	setDescription("ParticleDecay");
+	muonDecay = new DecayMuon(neutrinos, electrons, thinning, limit);
+	chargedPionDecay = new DecayChargedPion(muons, neutrinos, thinning, limit);
+	neutralPionDecay = new DecayNeutralPion(photons, thinning, limit);
+	etaMesonDecay = new DecayEtaMeson(photons, thinning, limit);
 }
 
-double ProtonProtonInteraction::lossLength(int id, double E, Vector3d position) const {
-	double rate = crossSection(E) * densityGrid->interpolate(position);
-	return 1. / rate;
+void ParticleDecay::setHaveElectrons(bool b) {
+	haveElectrons = b;
 }
 
-double ProtonProtonInteraction::crossSection(double en) const {
-	// Parametrisation from Kafexhiu et al. 2014
-	// Note: only works for en >> Ethr
-	// values are given in mb, hence the 1e-31 factor
-	double ethr = 2.797e8 * eV;
-	double x = (en - mass_proton * c_squared) / ethr;
-    double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
-    return res * 1e-31; 
+void ParticleDecay::setHaveMuons(bool b) {
+	haveMuons = b;
 }
 
-LeptonSpectrum::LeptonSpectrum() {
+void ParticleDecay::setHavePhotons(bool b) {
+	//
+	havePhotons = b;
 }
 
-LeptonSpectrum::LeptonSpectrum(int id) {
-	setLepton(id);
-	init();
+void ParticleDecay::setHaveNeutrinos(bool b) {
+	haveNeutrinos = b;
 }
 
-void LeptonSpectrum::init() {
-	prob.clear();
-	ratio.clear();
-	frac.clear();
-	switch(leptonId) {
-		case -11:
-			positronDistribution();
+void ParticleDecay::setLimit(double l) {
+	limit = l;
+}
+
+void ParticleDecay::setThinning(double thinning) {
+	thinning = thinning;
+}
+
+double ParticleDecay::lossLength(int id, double lf) const {
+	// Returns the loss length in the lab frame.
+	double lifetime;
+	switch (id) {
+		case 13:
+		case -13:
+			return muonDecay->lossLength(lf);
+		case 111: 
+			return neutralPionDecay->lossLength(lf);
+		case 211: 
+		case -211:
+			return chargedPionDecay->lossLength(lf);
+		case 221:
+			return etaMesonDecay->lossLength(lf);
+		default:
+			lifetime = std::numeric_limits<double>::max();
+			return c_light * lifetime * lf;
+	}
+}
+
+void ParticleDecay::process(Candidate *candidate) const {
+
+	// check if nucleus
+	int id = candidate->current.getId();
+	if (id != 111 & id != 221 && fabs(id) != 211 && fabs(id) != 13)
+		return;
+
+	double E = candidate->current.getEnergy();
+	double z = candidate->getRedshift();
+
+	double mass;
+	switch (id) {
+		case 221:
+			mass = mEtaMeson;
 			break;
-		case 12:
-			electronNeutrinoDistribution();
+		case -211:
+		case 211:
+			mass = mChargedPion;
 			break;
-		case 14:
-			muonNeutrinoDistribution();
+		case 111:
+			mass = mNeutralPion;
 			break;
-		case -14:
-			muonAntiNeutrinoDistribution();
+		case -13:
+		case 13:
+			mass = mMuon;
 			break;
 		default:
-			throw std::invalid_argument("Unknown id for lepton.");
-	}	
-}
-
-void LeptonSpectrum::setLepton(int id) {
-	leptonId = id;
-}
-
-void LeptonSpectrum::setFraction(std::vector<double> fraction) {
-	frac = fraction;
-}
-
-void LeptonSpectrum::setRatio(std::vector<double> ratio) {
-	ratio = ratio;
-}
-
-void LeptonSpectrum::setProbability(std::vector<double> probability) {
-	prob = probability;
-}
-
-int LeptonSpectrum::computeMultiplicity(PionSpectrum *ps, int mult0) const {
-	// Takes the gamma-ray multiplicity and used the scaling relations by
-	// Kelner et al. to obtain the multiplicity of the other particles.
-	// Gamma-ray multiplicities are from Kafexhiu et al. 2014.
-	double m = (double) mult0;
-	int nxspec = 10;
-	int nintegral = 100;
-	double r = 0;
-	if (leptonId == 14) {
-		double l = 0.427;
-		double res = 0;
-		for (int i = 0; i < nxspec; i++) {
-			double xmin = (double) i / nxspec;
-			double xmax = (double) (i + 1) / nxspec;
-			double a = ps->computeSlopeInInterval(xmin, xmax);
-			r += pow(l, a);
-		}
-		r = (double) r / nxspec;
-	} else {
-		double r = 0;
-		double m = (double) mult0;
-		int nxspec = 10;
-		int nintegral = 100;
-		for (int i = 0; i < nxspec; i++) {
-			double xmin = (double) i / nxspec;
-			double xmax = (double) (i + 1) / nxspec;
-			double a = ps->computeSlopeInInterval(xmin, xmax);
-			double res = 0;
-			for (int j = 0; j < nintegral; j++) {
-				double dx = (double) (xmax - xmin) / nintegral;
-				double x = (double) (2 * j + 1) * dx / 2;
-				double x0 = interpolate(x, frac, ratio);
-				res = res + x0 * pow(x, a - 1) * dx;
-			}
-			r += a * res;
-		}
+			std::cout << "Unknow particle Id for ParticleDecay " << id << std::endl;
+			break;
 	}
+
+	// For some reason, lorentz factors are not being automatically computed (lack of mass info in CRPropa)
+	double lf = E / (mass * c_squared);
+	double rate = 1. / lossLength(id, lf);
+	rate *= pow(1 + z, 2);
+
+	// check for interaction
 	Random &random = Random::instance();
-	if (random.rand() > 0.5) 	// correction for floor function.
-		return std::floor(r * m) + 1; 
+	double randDistance = -log(random.rand()) / rate;
+	if (candidate->getCurrentStep() > randDistance)
+		performInteraction(candidate);
 	else
-		return std::floor(r * m);
-} 
+		candidate->limitNextStep(limit / rate);
+}
 
-double LeptonSpectrum::energyFraction(double pmin, double pmax) const {
+void ParticleDecay::performInteraction(crpropa::Candidate *candidate) const {
+	int id = candidate->current.getId();
+	switch (id) {
+		case 13:
+		case -13:
+			muonDecay->performInteraction(candidate);
+			break;
+		case 111: 
+			neutralPionDecay->performInteraction(candidate);
+			break;
+		case 211: 
+		case -211:
+			chargedPionDecay->performInteraction(candidate);
+			break;
+		case 221:
+			etaMesonDecay->performInteraction(candidate);
+			break;
+	}
+}
+
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+DecayChargedPion::DecayChargedPion(bool muons, bool neutrinos, double thinning, double limit) {
+	setHaveMuons(muons);
+	setHaveNeutrinos(neutrinos);
+	setThinning(thinning);
+	setLimit(limit);
+	// setDescription("ChargedPionDecay");
+}
+
+void DecayChargedPion::setHaveMuons(bool b) {
+	haveMuons = b;
+}
+
+void DecayChargedPion::setHaveNeutrinos(bool b) {
+	haveNeutrinos = b;
+}
+
+void DecayChargedPion::setLimit(double l) {
+	limit = l;
+}
+
+void DecayChargedPion::setThinning(double thinning) {
+	thinning = thinning;
+}
+
+double DecayChargedPion::lossLength(double lf) const {
+	// Returns the loss length in the lab frame.
+	double lifetime;
+	lifetime = tauChargedPion;
+	return c_light * lifetime * lf;
+}
+
+double DecayChargedPion::energyFractionMuon() const {
+	// Random &random = Random::instance();
+	// double r = 1 - pow(mMuon / mChargedPion, 2);
+	// return random.randUniform(0., 1 - r);
+	return pow(mMuon / mChargedPion, 2.);
+}
+
+void DecayChargedPion::performInteraction(Candidate *candidate) const {
+
+	int id = candidate->current.getId();
+	double sign = (id > 0) ? 1 : ((id < 0) ? -1 : 0);
+	double E = candidate->current.getEnergy();  
+	double w0 = candidate->getWeight();
+
 	Random &random = Random::instance();
-	return interpolate(random.randUniform(pmin, pmax), prob, frac);
-}
+	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
 
-double LeptonSpectrum::ratioToPhoton(double x) const {
-	return interpolate(x, frac, ratio);
-}
+	// particle disappears after decay
+	candidate->setActive(false);
 
-void LeptonSpectrum::muonNeutrinoDistribution() {
-	// Muon neutrino due to pion+ decay (pi+ -> mu+ + nu_mu)
-	// See Eqs. 23-26 from Kelner et al. 2006.
-	double r = pow(mMuon / mChargedPion, 2);
-	double res = 0;
-	for (int i = 0; i < nsamples; i++) {
-		double x = (double) (i + 1) / nsamples;
-		frac.push_back(x);
-		if (x <= r) {
-			res = res + 2.367;
-			prob.push_back(res);
-			ratio.push_back(2.367);
-		} else {
-			prob.push_back(res);
-			ratio.push_back(0.);
-		}
+	double f = energyFractionMuon();
+	if (haveMuons) {
+		if (random.rand() < pow(1 - f, thinning)) {
+			double w = w0 / pow(1 - f, thinning);
+			candidate->addSecondary(sign * 13, E * (1 - f), pos, w);
+		} 
 	}
-	for (int i = 0; i < prob.size(); i++)
-		prob[i] /= res;
-}
-
-void LeptonSpectrum::positronDistribution() { 
-	// Electron spectrum; follows Eq. 36 from Kelner et al. 2006.
-	double r = pow(mMuon / mChargedPion, 2);
-	double res = 0;
-	for (int i = 0; i < nsamples; i++) {
-		double x = (double) (i + 1) / nsamples;
-		double g_1 = (3 - 2 * r) / (9 * (1 - r) * (1 - r));
-		double g_2 = 9 * x * x - 6 * log(x) - 4 * x * x * x - 5;
-		double g = g_1 * g_2;
-		double h1_1 = (3 - 2 * r) / (9 * (1 - r) * (1 - r));
-		double h1_2 = 9 * r * r - 6 * log(r) - 4 * r * r * r - 5;
-		double h1 = h1_1 * h1_2;
-		double h2_1 = (1 + 2 * r) * (r - x) / (9 * r * r);
-		double h2_2 = 9 * (r + x) - 4 * (r * r + r * x + x * x);
-		double h2 = h2_1 * h2_2;
-		if (x <= r) {
-			res = res + h1 + h2;
-			prob.push_back(res);
-			ratio.push_back(h1 + h2);
-		} else {
-			res += g;
-			prob.push_back(res);
-			ratio.push_back(g);
-		}
-		frac.push_back(x);
+	if (haveNeutrinos) {
+		if (random.rand() < pow(f, thinning))  {
+			double w = w0 / pow(f, thinning);
+			candidate->addSecondary(-sign * 14, E * f, pos, w);
+		} 
 	}
-	for (int i = 0; i < prob.size(); i++)
-		prob[i] /= res;
+	std::cout << "end" << std::endl;
 }
 
-void LeptonSpectrum::electronNeutrinoDistribution() {
-	// Electron neutrino spectrum; follows Eq. 40 from Kelner et al. 2006.
-	// Note that there is a typo in this reference. The correct version is presented
-	// in the erratum: https://journals.aps.org/prd/pdf/10.1103/PhysRevD.79.039901
-	double r = pow(mMuon / mChargedPion, 2);
-	double res = 0;
-	for (int i = 0; i < nsamples; i++) {
-		double x = (double) (i + 1) / nsamples;
-		double g_1 = 2 / (3 * (1 - r) * (1 - r)); 
-		double g_2 = (6 * (1 - x) * (1 - x) + r * (5 + 5 * x - 4 * x * x)) * (1 - x) + 6 * r * log(x);
-		double g = g_1 * g_2;
-		double h1_1 = 2 / (3 * (1 - r) * (1 - r));
-		double h1_2 = (1 - r) * (6 - 7 * r + 11 * r * r - 4 * r * r * r) + 6 * r * log(r);
-		double h1 = h1_1 * h1_2;
-		double h2_1 = 2 * (r - x) / (3 * r * r);
-		double h2_2 = (7 * r * r - 4 * r * r * r + 7 * x * r - 4 * x * r * r - 2 * x * x - 4 * r * x * x);
-		double h2 = h2_1 * h2_2;
-		if (x >= r) {
-			res = res + h1 + h2;
-			prob.push_back(res);
-			ratio.push_back(h1 + h2);
-		} else {
-			res += g;
-			prob.push_back(res);
-			ratio.push_back(g);
-		}
-		frac.push_back(x);
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+DecayNeutralPion::DecayNeutralPion(bool photons, double thinning, double limit) {
+	setHavePhotons(photons);
+	setLimit(limit);
+	setThinning(thinning);
+	// setDescription("NeutralPionDecay");
+}
+
+void DecayNeutralPion::setHavePhotons(bool b) {
+	havePhotons = b;
+}
+
+void DecayNeutralPion::setLimit(double l) {
+	limit = l;
+}
+
+void DecayNeutralPion::setThinning(double thinning) {
+	thinning = thinning;
+}
+
+double DecayNeutralPion::lossLength(double lf) const {
+	// Returns the loss length in the lab frame.
+	double lifetime;
+	lifetime = tauNeutralPion;
+	return c_light * lifetime * lf;
+}
+
+
+double DecayNeutralPion::energyFractionPhoton() const {
+	return 0.5;
+}
+
+void DecayNeutralPion::performInteraction(Candidate *candidate) const {
+
+	double E = candidate->current.getEnergy();  
+	double w0 = candidate->getWeight();
+
+	Random &random = Random::instance();
+	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
+
+	// particle disappears after decay
+	candidate->setActive(false);
+
+	double f = energyFractionPhoton();
+	if (havePhotons) {
+		if (random.rand() < pow(1 - f, thinning)) {
+			double w = w0 / pow(1 - f, thinning);
+			candidate->addSecondary(22, E * (1 - f), pos, w);
+		} 
+		if (random.rand() < pow(f, thinning)) {
+			double w = w0 / pow(f, thinning);
+			candidate->addSecondary(22, E * f, pos, w);
+		} 
 	}
-	for (int i = 0; i < prob.size(); i++)
-		prob[i] /= res;
 }
 
-void LeptonSpectrum::muonAntiNeutrinoDistribution() {
-	// Initiates the table computed following Eq. 36 from Kelner et al. 2006.
-	positronDistribution();
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+DecayEtaMeson::DecayEtaMeson(bool photons, double thinning, double limit) {
+	setHavePhotons(photons);
+	setLimit(limit);
+	setThinning(thinning);
+	// setDescription("EtaMesonDecay");
 }
 
-PionSpectrum::PionSpectrum() {
-	initSpectrum();
-
-	// std::cout << "pi frac: " << frac.size() << "  " << frac[0] << " " << frac[frac.size()-1] << std::endl;
-	// std::cout << "pi prob: " << prob.size() << "  " << prob[0] << " " << prob[prob.size()-1] << std::endl;
-	// std::cout << "pi ener: " << energy.size() << "  " << energy[0] / eV << " " << energy[energy.size()-1] / eV << std::endl;
+void DecayEtaMeson::setHavePhotons(bool b) {
+	havePhotons = b;
 }
 
-void PionSpectrum::initSpectrum() {
-	// Initiates the table computed following Eq. 11 of Kafexhiu et al. 2014.
+void DecayEtaMeson::setLimit(double l) {
+	limit = l;
+}
+
+void DecayEtaMeson::setThinning(double thinning) {
+	thinning = thinning;
+}
+
+double DecayEtaMeson::lossLength(double lf) const {
+	// Returns the loss length in the lab frame.
+	double lifetime;
+	lifetime = tauEtaMeson;
+	return c_light * lifetime * lf;
+}
+
+double DecayEtaMeson::energyFractionPhoton() const {
+	return 0.5;
+}
+
+void DecayEtaMeson::performInteraction(Candidate *candidate) const {
+
+	double E = candidate->current.getEnergy();  
+	double w0 = candidate->getWeight();
+
+	Random &random = Random::instance();
+	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
+
+	// particle disappears after decay
+	candidate->setActive(false);
+
+	double f = energyFractionPhoton();
+	if (havePhotons) {
+		if (random.rand() < pow(1 - f, thinning)) {
+			double w = w0 / pow(1 - f, thinning);
+			candidate->addSecondary(22, E * (1 - f), pos, w);
+		} 
+		if (random.rand() < pow(f, thinning)) {
+			double w = w0 / pow(f, thinning);
+			candidate->addSecondary(22, E * f, pos, w);
+		} 
+	}
+}
+
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+///////////////////////////////////////////////////
+DecayMuon::DecayMuon(bool neutrinos, bool electrons, double thinning, double limit) {
+	setHaveNeutrinos(neutrinos);
+	setHaveElectrons(electrons);
+	setLimit(limit);
+	setThinning(thinning);
+	initSpectra();
+	// setDescription("MuonDecay");
+}
+
+void DecayMuon::initSpectra() {
 
 	// clear previously loaded tables
-	frac.clear();
-	prob.clear();
-	energy.clear();
+	logFraction.clear();
+	probabilities.clear();
+	electronNeutrinoFraction.clear();
+	electronFraction.clear();
+	muonNeutrinoFraction.clear();
 
-	const static double mp = 938.27231 * 1e6; 
-	const static double mpi = 134.9767 * 1e6;
-	const int nx = 600;
-	const int ne = 110; 
-	const int np = 600;
-	double frac_tmp[nx][ne];
-	double prob_tmp[nx];
-	double energy_tmp[ne];
-	const double emin = 1e10 * eV;
-	const double emax = 1e21 * eV;
-	const double fmin = 1e-6;
-	const double fmax = 1;
-	std::vector<double> f_tmp;
+	const int nx = 10000; // number of points to sample energy fraction
+	const int np = nx; // number of points to sample probability array
 
-	for (int i = 0; i < np; i++) {
-		double dp = log10(fmax / fmin) / np;
-		double p = log10(fmin) + (double) (i + 1) * dp;
-		p = pow(10, p);
-		prob.push_back(p);
+	// Create an array with energy fractions
+	const double xmin = 1e-10; // minimum energy fraction
+	const double xmax = 1; // maximum energy fraction
+	for (int i = 0; i < nx; i++) {
+		double dlx = log10(xmax / xmin) / nx;
+		double x_ = log10(xmin) + i * dlx;
+		logFraction.push_back(x_);
 	}
 
-	for (int j = 0; j < ne; j++ ) {	
-		double de = log10(emax / emin) / ne;
-		double Ep = log10(emin) + (double) (j + 1) * de;
-		Ep = pow(10, Ep);
-		energy.push_back(Ep);
-		double p = 0;
-		double pmax = 0;
-		std::vector<double> p_tmp;
-		std::vector<double> x_tmp;
-		for (int i = 0; i < nx; i++) {
-			double dx = log10(fmax / fmin) / nx;
-			double x = log10(fmin) + (double) (i + 1) * dx;
-			x = pow(10, x);
-		    double L = log((Ep / eV - mp) / 1e12);
-		    double Bpi = 5.58 + 0.78 * L + 0.1 * L * L;
-		    double r = 3.1 / pow(Bpi, 1.5);
-		    double alpha = 0.89 / (pow(Bpi, 0.5) * (1 - exp(-0.33 * Bpi)));
-		    double f1 = 4 * alpha * Bpi * pow(x, alpha - 1);
-		    double f2 = pow(1 - pow(x, alpha), 4) / pow(pow(1 + r * pow(x, alpha), 3), 4);
-		    double f3 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
-		    double f4 = sqrt(1 - mpi / (x * Ep / eV));
-		    double f = p + f1 * f2 * f3 * f4;
-		    if (f < std::numeric_limits<double>::max() and f > std::numeric_limits<double>::min())
-			    p += f1 * f2 * f3 * f4;
-		    x_tmp.push_back(x);
-		    p_tmp.push_back(p);
-		    if (i == nx - 1)
-		    	pmax = p;
-		}
+	// Create an array with probabilities for sampling
+	const double pmin = xmin; // minimum energy fraction
+	const double pmax = 1; // maximum energy fraction
+	for (int i = 0; i < np; i++) {
+		double dlp = log10(pmax / pmin) / np;
+		double p_ = log10(pmin) + i * dlp;
+		probabilities.push_back(pow(10, p_));
+	}
 
-		for (int k = 0; k < p_tmp.size(); k++) {
-			p_tmp[k] /= pmax;
-		}
+	// For a fixed incident proton energy, get distribution of energy fractions.
+	std::vector<double> fElectron; // from muon decay
+	std::vector<double> fElectronNeutrino; // from muon decay
+	std::vector<double> fMuonNeutrino; // from muon decay
+	std::vector<double> logFElectron; // from muon decay
+	std::vector<double> logFElectronNeutrino; // from muon decay
+	std::vector<double> logFMuonNeutrino; // from muon decay
 
-		for (int k = 0; k < prob.size(); k++) {
-			double y = interpolate(prob[k], p_tmp, x_tmp);	
-			frac.push_back(y);
-		}
-		
+	for (int j = 0; j < nx; j++) {
+		// Equations from Gaisser's book, 2016, tab. 6.2
+		// electrons/muon neutrinos from muon decay
+		double x = pow(10, logFraction[j]); 
+		double g0 = 5. / 3. - 3. * pow(x, 2.) + 4. / 3. * pow(x, 3.);
+		double g1 = 1. / 3. - 3. * pow(x, 2.) + 8. / 3. * pow(x, 3.);
+		fElectron.push_back(g0 + g1);
+		fMuonNeutrino.push_back(g0 + g1);
+
+		// electron neutrinos from muon decay
+		double h0 = 2. - 6. * pow(x, 2.) + 4. * pow(x, 3.);
+		double h1 = -2. + 12. * x - 18. * pow(x, 2.) + 8. * pow(x, 3.);
+		fElectronNeutrino.push_back(h0 + h1);
+	}
+	fElectron.resize(nx);
+	fElectronNeutrino.resize(nx);
+	fMuonNeutrino.resize(nx);
+
+	// Compute cumulative distributions
+	std::partial_sum(fElectron.begin(), fElectron.end(), fElectron.begin());
+	std::partial_sum(fElectronNeutrino.begin(), fElectronNeutrino.end(), fElectronNeutrino.begin());
+	std::partial_sum(fMuonNeutrino.begin(), fMuonNeutrino.end(), fMuonNeutrino.begin());
+
+	// Normalise distribution
+	double normElectron = 1. / *std::max_element(fElectron.begin(), fElectron.end());
+	double normElectronNeutrino = 1. / *std::max_element(fElectronNeutrino.begin(), fElectronNeutrino.end());
+	double normMuonNeutrino = 1. / *std::max_element(fMuonNeutrino.begin(), fMuonNeutrino.end());
+
+
+	for (int j = 0; j < nx; j++) {
+		fElectron[j] *= normElectron;
+		fElectronNeutrino[j] *= normElectronNeutrino;
+		fMuonNeutrino[j] *= normMuonNeutrino;
+		logFElectron.push_back(log10(fElectron[j]));
+		logFElectronNeutrino.push_back(log10(fElectronNeutrino[j]));
+		logFMuonNeutrino.push_back(log10(fMuonNeutrino[j]));
+	}
+	logFElectron.resize(nx);
+	logFElectronNeutrino.resize(nx);
+	logFMuonNeutrino.resize(nx);
+
+	// Invert distribution and sample from it
+	for (int j = 0; j < probabilities.size(); j++) {
+		double y1 = interpolate(log10(probabilities[j]), logFMuonNeutrino, logFraction);
+		double y2 = interpolate(log10(probabilities[j]), logFElectron, logFraction);
+		double y3 = interpolate(log10(probabilities[j]), logFElectronNeutrino, logFraction);
+		muonNeutrinoFraction.push_back(pow(10, y1));
+		electronFraction.push_back(pow(10, y2));
+		electronNeutrinoFraction.push_back(pow(10, y3));
 	}
 }
 
-double PionSpectrum::energyFraction(double en) const {
+void DecayMuon::setHaveElectrons(bool b) {
+	//
+	haveElectrons = b;
+}
+
+void DecayMuon::setHaveNeutrinos(bool b) {
+	haveNeutrinos = b;
+}
+
+void DecayMuon::setLimit(double l) {
+	limit = l;
+}
+
+void DecayMuon::setThinning(double thinning) {
+	thinning = thinning;
+}
+
+double DecayMuon::lossLength(double lf) const {
+	// Returns the loss length in the lab frame.
+	double lifetime;
+	lifetime = tauMuon;
+	return c_light * lifetime * lf;
+}
+
+double DecayMuon::energyFractionElectron(double xmin, double xmax) const {
 	Random &random = Random::instance();
-	return interpolate2d(random.rand(), en, prob, energy, frac);
+	return interpolate(random.randUniform(xmin, xmax), probabilities, electronFraction);
 }
 
-int PionSpectrum::neutralPionMultiplicity(double en) const {
-	// Parametrisation from Kafexhiu et al. 2014 for the pi0 multiplicity
-	// Experimental data up to 5 GeV, GEANT 4.10.0 up to 100 TeV, and SYBILL 2.1 above.
-	double Tp = en - mass_proton * c_squared;
-	if (Tp > 1e9 * eV and Tp < 5e9 * eV) { 
-		double q = (Tp - 2.797e8 * eV) / (mass_proton * c_squared);
-		double res = -6e-3 + 0.237 * q - 0.023 * q * q;
-		return (int) std::floor(res);
-	} else if (Tp >= 5e9 * eV and Tp < 1e14 * eV) { 
-		double a1 = 0.728;
-		double a2 = 0.596;
-		double a3 = 0.491;
-		double a4 = 0.2503;
-		double a5 = 0.117;
-		double csi = (Tp - 3e9 * eV) / (mass_proton * c_squared);
-		double res = a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
-		return (int) std::floor(res);
-	} else {
-		double a1 = 5.436;
-		double a2 = 0.254;
-		double a3 = 0.072;
-		double a4 = 0.075;
-		double a5 = 0.166;
-		double csi = (Tp - 3e9 * eV) / (mass_proton * c_squared);
-		double res = a1 * pow(csi, a4) * (1 + exp(-a2 * pow(csi, a5))) * (1 - exp(-a3 * pow(csi, 0.25)));
-		return (int) std::floor(res);
-	}
+double DecayMuon::energyFractionElectronNeutrino(double xmin, double xmax) const {
+	Random &random = Random::instance();
+	return interpolate(random.randUniform(xmin, xmax),probabilities, electronNeutrinoFraction);
 }
 
-double PionSpectrum::computeSlopeInInterval(double xmin, double xmax) const {
-	// In future releases this will be changed to read from a tabulated pion spectrum
-	// Note that this value requires simulations to be run with spectrum E^-1
-	return 1;
-
-	// // minimum
-	// double x = xmin;
-	// double L = log((en / eV - mp) / 1e12);
-	// double Bpi = 5.58 + 0.78 * L + 0.1 * L * L;
-	// double r = 3.1 / pow(Bpi, 1.5);
-	// double alpha = 0.89 / (pow(Bpi, 0.5) * (1 - exp(-0.33 * Bpi)));
-	// double f1 = 4 * alpha * Bpi * pow(x, alpha - 1);
-	// double f2 = pow(1 - pow(x, alpha), 4) / pow(pow(1 + r * pow(x, alpha), 3), 4);
-	// double f3 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
-	// double f4 = sqrt(1 - mpi / (x * Ep / eV));
-	// double fmin = f1 * f2 * f3 * f4;
-
-	// double x = xmax;
-	// L = log((en / eV - mp) / 1e12);
-	// Bpi = 5.58 + 0.78 * L + 0.1 * L * L;
-	// r = 3.1 / pow(Bpi, 1.5);
-	// alpha = 0.89 / (pow(Bpi, 0.5) * (1 - exp(-0.33 * Bpi)));
-	// f1 = 4 * alpha * Bpi * pow(x, alpha - 1);
-	// f2 = pow(1 - pow(x, alpha), 4) / pow(pow(1 + r * pow(x, alpha), 3), 4);
-	// f3 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
-	// f4 = sqrt(1 - mpi / (x * Ep / eV));
-	// fmax = f1 * f2 * f3 * f4;
-
-	// double slope = (fmax - fmin) / (xmax - xmin);
-	// std::cout << slope << std::endl;
-	// return slope;
+double DecayMuon::energyFractionMuonNeutrino(double xmin, double xmax) const {
+	Random &random = Random::instance();
+	return interpolate(random.randUniform(xmin, xmax), probabilities, muonNeutrinoFraction);
 }
 
-int PionSpectrum::chargedPionMultiplicity(double en) const {
-	// Parametrisation from Kelner et al. 2006 (Eq. 4).
-	// Parameters are for QGSJet.
-	double x = en / mass_proton;
-	double L = log(en / (1e12 * eV));
-	double Bpi = 5.58 + 0.78 * L + 0.10 * L * L;
-	double r = 3.1 / pow(Bpi, 1.5);
-	double alpha = 0.89 / (sqrt(Bpi) * (1 - exp(-0.33 * Bpi)));
-	double a = 1 - pow(x, alpha);
-	double b = pow(1 + r * pow(x, alpha), 3);
-	// return (int) std::floor(Bpi * pow(a / b, 4));
-	double pf = 4 * alpha * Bpi * pow(x, alpha - 1);
-	double f1 = pow((1 - pow(x, alpha)) / pow(1 + r * pow(x, alpha), 3), 4);
-	double f2 = 1 / (1 - pow(x, alpha)) + 3 * r / (1 + r * pow(x, alpha));
-	double f3 = sqrt(1 - mChargedPion / (x * en));
-	return (int) std::floor(pf * f1 *f2 * f3 * x);
-}
+void DecayMuon::performInteraction(Candidate *candidate) const {
 
-double PionSpectrum::crossSection(double en) const {
-	double Tp = en - mass_proton * c_squared;
-	double Tpthr = 2.797e8 * eV;
-	if (Tp >= Tpthr and Tp < 2e9 * eV) {
-		return onePionCrossSection(en) + twoPionCrossSection(en);
-	} else {
-		double x = Tp / Tpthr;
-	    double piCS = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1 / x, 1.9), 3);
-	    return 1e-31 * piCS * neutralPionMultiplicity(en);
-	}
-}
+	double E = candidate->current.getEnergy();    
+	double w0 = candidate->getWeight();
+	int id = candidate->current.getId();
+	double sign = (id > 0) ? 1 : ((id < 0) ? -1 : 0);
 
-double PionSpectrum::onePionCrossSection(double en) const {
-	double s = centreOfMassEnergySquared(en);
-	double sigma0 = 7.66e-3 * 1e-31;
-	double mpi = 134.9766 * 1e6 * eV;
-	double mp = mass_proton * c_squared;
-	double eta = sqrt(pow(s - mpi * mpi * 4 * mp * mp, 2) - 16 * mpi * mpi * mp * mp) / (2 * mpi * sqrt(s));
-	return sigma0 * pow(eta, 1.95) * (1 + eta + pow(eta, 5)) * pow(breitWigner(s), 1.86);
-}
+	Random &random = Random::instance();
+	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
 
-double PionSpectrum::twoPionCrossSection(double en) const {
-	double Tp = en - mass_proton * c_squared;
-	return 5.7e-31 / (1 + exp(-9.3 * (Tp - 1.4e9 * eV)));
-}
+	// particle disappears after decay
+	candidate->setActive(false);
 
-double PionSpectrum::breitWigner(double s) const {
-	double mp = mass_proton * c_squared;
-	double mres = 1.1883e9 * eV;
-	double gammares = 0.2264e9 * eV;
-	double gamma = sqrt(mres * mres * (mres * mres + gammares * gammares));
-	double k = sqrt(8) * mres * gammares * gamma / (M_PI * sqrt(mres * mres + gamma));
-	double f1 = pow(sqrt(s) - mp, 2) - mres * mres;
-	double f2 = mres * gammares;
-	return mp * k / (f1 * f1 + f2 * f2);
-}
+	double fe = energyFractionElectron(0, 1);
+	double fnue = energyFractionElectronNeutrino(0, 1 - fe);
+	double fnumu = 1 - fe - fnue;
 
-double PionSpectrum::centreOfMassEnergySquared(double en) const {
-	double Tp = en - mass_proton * c_squared;
-	return 2 * mass_proton * c_squared * (Tp + 2 * mass_proton * c_squared);
-}
-
-double PionSpectrum::pionMaximumEnergyLab(double en) const {
-	double Tp = en - mass_proton * c_squared;
-	double mp = mass_proton * c_squared;
-	double mpi = 134.9766 * 1e6 * eV;
-	double s = centreOfMassEnergySquared(en);
-	double gammaCM = lorentzFactorCMF(en);
-	double betaCM = sqrt(1 - 1 / (gammaCM * gammaCM));
-	double EpiCM = pionEnergyCMF(en);
-	double PpiCM = sqrt(EpiCM * EpiCM - mpi * mpi);
-	return gammaCM * (EpiCM + PpiCM * betaCM);
-}
-
-double PionSpectrum::pionEnergyCMF(double en) const {
-	double s = centreOfMassEnergySquared(en);
-	double mp = mass_proton * c_squared;
-	double mpi = 134.9766 * 1e6 * eV;
-	return (s - 4 * mp * mp + mpi * mpi) / (2 * sqrt(s));
-}
-
-double PionSpectrum::lorentzFactorCMF(double en) const {
-	double Tp = en - mass_proton * c_squared;
-	double mp = mass_proton * c_squared;
-	double mpi = 134.9766 * 1e6 * eV;
-	double s = centreOfMassEnergySquared(en);
-	return (Tp + 2 * mp) / sqrt(s);
-}
-
-double PionSpectrum::lorentzFactorLab(double en) const {
-	double mpi = 134.9766 * 1e6 * eV;
-	return pionMaximumEnergyLab(en) / mpi;
-}
-
-GammaSpectrum::GammaSpectrum() {
-	pionSpec = new PionSpectrum();
-	initSpectrum();
-	// std::cout << "g frac: " << frac.size() << "  " << frac[0] << " " << frac[frac.size()-1] << std::endl;
-	// std::cout << "g prob: " << prob.size() << "  " << prob[0] << " " << prob[prob.size()-1] << std::endl;
-	// std::cout << "g ener: " << energy.size() << "  " << energy[0] / eV << " " << energy[energy.size()-1] / eV << std::endl;
-
-	// for (int i = 0; i < frac.size(); i++)
-	// 	std::cout << frac[i] << std::endl;
-}
-
-void GammaSpectrum::initSpectrum() {
-	// Initiates the table computed following Eq. 8 of Kafexhiu et al. 2014.
-	// clear previously loaded tables
-	frac.clear();
-	prob.clear();
-	energy.clear();
-
-	const int nx = 600;
-	const int ne = 110; 
-	const int np = 600;
-	double frac_tmp[nx][ne];
-	double prob_tmp[nx];
-	double energy_tmp[ne];
-	const double emin = 1e10 * eV;
-	const double emax = 1e21 * eV;
-	const double fmin = 1e-6;
-	const double fmax = 1;
-	std::vector<double> f_tmp;
-
-	for (int i = 0; i < np; i++) {
-		double dp = log10(fmax / fmin) / np;
-		double p = log10(fmin) + (double) (i + 1) * dp;
-		p = pow(10, p);
-		prob.push_back(p);
-	}
-
-	for (int j = 0; j < ne; j++ ) {	
-		double de = log10(emax / emin) / ne;
-		double Ep = log10(emin) + (double) (j + 1) * de;
-		Ep = pow(10, Ep);
-		energy.push_back(Ep);
-		double p = 0;
-		double pmax = 0;
-		std::vector<double> p_tmp;
-		std::vector<double> x_tmp;
-		for (int i = 0; i < nx; i++) {
-			double dx = log10(fmax / fmin) / nx;
-			double x = log10(fmin) + (double) (i + 1) * dx;
-			x = pow(10, x);
-		    double f = differentialCrossSection(Ep, x * Ep) * x;
-		    if (f < std::numeric_limits<double>::max() and f > std::numeric_limits<double>::min())
-			    p += f;
-		    // std::cout << x << " " << f << " " << p << std::endl;
-		    x_tmp.push_back(x);
-		    p_tmp.push_back(p);
-		    if (i == nx - 1)
-		    	pmax = p;
-		}
-
-		for (int k = 0; k < p_tmp.size(); k++) {
-			p_tmp[k] /= pmax;
-		}
-
-		for (int k = 0; k < prob.size(); k++) {
-			double y = interpolate(prob[k], p_tmp, x_tmp);	
-			frac.push_back(y);
-			// std::cout << Ep / eV << " " << y << " " << prob[k] << std::endl;
+	if (haveElectrons) {
+		if (random.rand() < pow(fe, thinning)) {
+			double w = w0 / pow(fe, thinning);
+			candidate->addSecondary(sign * 11, E * fe, pos, w);
 		}
 	}
-}
-
-double GammaSpectrum::differentialCrossSection(double en, double Eg) const {
-	// std::cout << en / eV << " " << Eg / eV << " " << Fdist(en, Eg) << std::endl;
-	return Amax(en) * Fdist(en, Eg);
-}
-
-double GammaSpectrum::Amax(double en) const {
-	// GEANT 4.10.0 below 100 TeV, SYBILL 2.1 above
-	// See Eq. 12 Kafexhiu et al. 2014, and Table VII.
-
-	double Tp = en - mass_proton * c_squared;
-	double Tpthr = 2.797e8 * eV;
-
-	double b0, b1, b2, b3;
-	if (Tp >= 1e9 * eV and Tp < 5e9 * eV) {
-		b1 = 9.53;
-		b2 = 0.52;
-		b3 = 0.054;
-	} else if (Tp >= 5e9 * eV and Tp < 1e14 * eV) {
-		b1 = 9.13;
-		b2 = 0.35;
-		b3 = 9.7e-3;
-	} else {
-		b1 = 10.77;
-		b2 = 0.412;
-		b3 = 0.01264;
+	if (haveNeutrinos) {
+		if (random.rand() < pow(fnue, thinning)) {
+			double w = w0 / pow(fnue, thinning);
+			candidate->addSecondary(- sign * 12, E * fnue, pos, w);
+		}
+		if (random.rand() < pow(fnumu, thinning)) {
+			double w = w0 / pow(fnumu, thinning);
+			candidate->addSecondary(sign * 14, E * fnumu, pos, w);	
+		}
 	}
-	double Epimax = pionSpec->pionMaximumEnergyLab(en);
-
-	double Amax = 0;
-	if (Tp >= Tpthr and Tp < 1e9 * eV) {
-		double b0 = 5.9;
-		Amax = b0 * pionSpec->crossSection(en) / Epimax;
-	} else {
-		double t = Tp / (mass_proton * c_squared);
-		Amax = b1 * pow(t, -b2) * exp(b3 * log(t) * log(t)) * pionSpec->crossSection(en) / (mass_proton * c_squared);
-	}	
-	// cheating to fix differential cross sections, which are wrong by a log(10)^2 factor.
-	// note that this won't affect the results, since dSigma/dE_gamma won't be directly used, only when normalised.
-	return Amax / pow(log(10), 2);
-}
-
-double GammaSpectrum::Fdist(double en, double Eg) const {
-	// GEANT 4.10.0 below 100 TeV, SYBILL 2.1 above
-	// See Eq. 11 Kafexhiu et al. 2014, and Table V.
-	double mp = mass_proton * c_squared;
-	double mpi = 134.9766 * 1e6 * eV;
-	double lfCMF = pionSpec->lorentzFactorCMF(en);
-	double lfLab = pionSpec->lorentzFactorLab(en);
-	double betaLab = sqrt(1 - 1 / (lfLab * lfLab));
-	double Egmax = 0.5 * mpi * lfLab * (1 + betaLab);
-	double Yg = Eg + mpi * mpi / (4 * Eg);
-	double Ygmax = Egmax + mpi * mpi / (4 * Egmax);
-	double Xg = (Yg - mpi) / (Ygmax - mpi);
-	
-	double Tp = en - mass_proton * c_squared;
-	double Tpthr = 2.797e8 * eV;
-	double t = Tp / (mass_proton * c_squared);
-	double kappa = 3.29 - 0.2 * pow(t, -1.5);
-	double q = (Tp - 1e9 * eV) / mp;
-	double mu = 5 / 4 * pow(q, 5 / 4) * exp(- 5 / 4 * q);
-	double alpha, beta, gamma, lambda;
-	if (Tp >= Tpthr and Tp < 1e9 * eV) {
-		lambda = 1;
-		alpha = 1.;
-		beta = kappa;
-		gamma = 0;
-	} else if (Tp >= 1e9 * eV and Tp < 4e9 * eV) {
-		lambda = 3;
-		alpha = 1.;
-		beta = mu + 2.45;
-		gamma = mu + 1.45;
-	} else if (Tp >= 4e9 * eV and Tp < 2e10 * eV) {
-		lambda = 3;
-		alpha = 1.;
-		beta = 1.5 * mu + 4.95;
-		gamma = mu + 1.50;
-	} else if (Tp >= 2e10 * eV and Tp < 1e14 * eV) {
-		lambda = 3;
-		alpha = 0.5;
-		beta = 4.2;
-		gamma = 1.;
-	} else {
-		lambda = 3.55;
-		alpha = 0.5;
-		beta = 3.6;
-		gamma = 1;
-	}
-	double C = lambda * mpi / Ygmax;
-	return pow(1 - pow(Xg, alpha), beta) / pow(1 + Xg / C, gamma);
 }
