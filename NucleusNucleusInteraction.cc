@@ -76,7 +76,6 @@ void NucleusNucleusInteraction::decayMuon(bool b) {
 	doDecayMuon = b;
 }
 
-
 void NucleusNucleusInteraction::initMesonSpectra() {
 	// Initialise pion spectra.
 	// Follows Eqs. 12 and 13 from:
@@ -293,12 +292,10 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 	int counter = 0;
 	double xtot = 0;
 	while (xtot < 1) {
-
-		double x1 = energyFractionNeutralPion(energy, 1e-10, 1 - xtot);
-		double x2 = energyFractionChargedPion(energy, 1e-10, 1 - xtot);
-		double x3 = energyFractionChargedPion(energy, 1e-10, 1 - xtot);
-		double x4 = energyFractionEtaMeson(energy, 1e-10, 1 - xtot);
-
+		double x1 = energyFractionNeutralPion(energy, 1e-10, 1. - xtot);
+		double x2 = energyFractionChargedPion(energy, 1e-10, 1. - xtot);
+		double x3 = energyFractionChargedPion(energy, 1e-10, 1. - xtot);
+		double x4 = energyFractionEtaMeson(energy, 1e-10, 1. - xtot);
 		double y = (x1 + x2 + x3 + x4);
 		double x = 0;
 		double r = random.rand();
@@ -312,27 +309,25 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 			x = x2;
 		}
 		else if (r >= (x1 + x2) / y && r < (x1 + x2 + x3) / y) {
-			id = 211;
+			id = -211;
 			x = x3;
 		}
 		else {
 			id = 221;
 			x = x4;
 		}
-
-		// std::cout << id << " " << E / eV << " " << x << " " << xtot << std::endl;
-		candidate->setActive(false);
-
 		xtot += x;
+
+       candidate->setActive(false); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! false works
+ 
 
 		if (random.rand() < pow(x, thinning)) {
 			double w = w0 / pow(x, thinning);
 			candidate->addSecondary(id, x * energy, pos, w);
 		}
-
 		
 		// force stop
-		if (1 - xtot < 3e-6)
+		if (1 - xtot < 1e-10)
 			break;
 		if (counter >= 100)
 			break;
@@ -343,11 +338,12 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 ///////////////////////////////////////////////////
 ///////////////////////////////////////////////////
 ///////////////////////////////////////////////////
-ParticleDecay::ParticleDecay(bool photons, bool electrons, bool neutrinos, bool muons, double thinning, double limit) : Module() {
+ParticleDecay::ParticleDecay(bool photons, bool electrons, bool neutrinos, bool muons, const std::vector<int>& pList, double thinning, double limit) : Module() {
 	setHaveElectrons(electrons);
 	setHaveNeutrinos(neutrinos);
 	setHavePhotons(photons);
 	setHaveMuons(muons);
+	setDecayParticles(pList);
 	setLimit(limit);
 	setDescription("ParticleDecay");
 	muonDecay = new DecayMuon(neutrinos, electrons, thinning, limit);
@@ -377,6 +373,19 @@ void ParticleDecay::setLimit(double l) {
 	limit = l;
 }
 
+void ParticleDecay::setDecayParticles(std::vector<int> v) {
+	if (v.size() == 0) {
+		decayParticles.push_back( -13);
+		decayParticles.push_back(  13);
+		decayParticles.push_back( 111);
+		decayParticles.push_back(-211);
+		decayParticles.push_back( 211);
+		decayParticles.push_back( 221);
+	} else {
+		decayParticles = v;
+	}
+}
+
 void ParticleDecay::setThinning(double thinning) {
 	thinning = thinning;
 }
@@ -402,10 +411,19 @@ double ParticleDecay::lossLength(int id, double lf) const {
 }
 
 void ParticleDecay::process(Candidate *candidate) const {
-
-	// check if nucleus
+	
 	int id = candidate->current.getId();
-	if (id != 111 & id != 221 && fabs(id) != 211 && fabs(id) != 13)
+
+	// available particle decay information	
+	if (id != 111 && id != 221 && fabs(id) != 211 && fabs(id)!= 13)
+		return;
+
+	bool process = false;
+	for (int i = 0; i < decayParticles.size(); i++) {
+		if (id == decayParticles[i]) 
+			process = true;
+	}
+	if (process == false) 
 		return;
 
 	double E = candidate->current.getEnergy();
@@ -522,6 +540,8 @@ void DecayChargedPion::performInteraction(Candidate *candidate) const {
 	candidate->setActive(false);
 
 	double f = energyFractionMuon();
+	if (f < 1e-10) f = 0.;
+	if (f > 1.) f = 1.;
 	if (haveMuons) {
 		if (random.rand() < pow(1 - f, thinning)) {
 			double w = w0 / pow(1 - f, thinning);
@@ -534,7 +554,6 @@ void DecayChargedPion::performInteraction(Candidate *candidate) const {
 			candidate->addSecondary(-sign * 14, E * f, pos, w);
 		} 
 	}
-	std::cout << "end" << std::endl;
 }
 
 ///////////////////////////////////////////////////
@@ -565,7 +584,6 @@ double DecayNeutralPion::lossLength(double lf) const {
 	lifetime = tauNeutralPion;
 	return c_light * lifetime * lf;
 }
-
 
 double DecayNeutralPion::energyFractionPhoton() const {
 	return 0.5;
