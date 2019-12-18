@@ -722,8 +722,9 @@ void DecayMuon::initSpectra() {
 
 	for (int j = 0; j < nx; j++) {
 		// Equations from Gaisser's book, 2016, tab. 6.2
-		// electrons/muon neutrinos from muon decay
 		double x = pow(10, logFraction[j]); 
+
+		// electrons/muon neutrinos from muon decay
 		double g0 = 5. / 3. - 3. * pow(x, 2.) + 4. / 3. * pow(x, 3.);
 		double g1 = 1. / 3. - 3. * pow(x, 2.) + 8. / 3. * pow(x, 3.);
 		fElectron.push_back(g0 + g1);
@@ -733,6 +734,13 @@ void DecayMuon::initSpectra() {
 		double h0 = 2. - 6. * pow(x, 2.) + 4. * pow(x, 3.);
 		double h1 = -2. + 12. * x - 18. * pow(x, 2.) + 8. * pow(x, 3.);
 		fElectronNeutrino.push_back(h0 + h1);
+		
+		// Simplified expressions
+		// double g = 2. + 2. * x * x * (2 * x - 3);
+		// double h = 2. * x * (1 - 2 * x + x * x);
+		// fElectron.push_back(g);
+		// fMuonNeutrino.push_back(g);
+		// fElectronNeutrino.push_back(h);
 	}
 	fElectron.resize(nx);
 	fElectronNeutrino.resize(nx);
@@ -747,7 +755,6 @@ void DecayMuon::initSpectra() {
 	double normElectron = 1. / *std::max_element(fElectron.begin(), fElectron.end());
 	double normElectronNeutrino = 1. / *std::max_element(fElectronNeutrino.begin(), fElectronNeutrino.end());
 	double normMuonNeutrino = 1. / *std::max_element(fMuonNeutrino.begin(), fMuonNeutrino.end());
-
 
 	for (int j = 0; j < nx; j++) {
 		fElectron[j] *= normElectron;
@@ -824,9 +831,27 @@ void DecayMuon::performInteraction(Candidate *candidate) const {
 	// particle disappears after decay
 	candidate->setActive(false);
 
+	/***********************************************/
+	// This is the logical way to do it, using a low tolerance.
+	// double tol = 1.; // hard-coded for now.
+	// double fe = 0;
+	// double fnue = 0;
+	// double fnumu = 0;
+	// double ftot = 100;
+	// while (fabs(1 - ftot) >= tol) {
+	// 	fe = energyFractionElectron(0, 1);
+	// 	fnue = energyFractionElectronNeutrino(0, 1);
+	// 	fnumu = energyFractionMuonNeutrino(0, 1);
+	// 	ftot = fe + fnue + fnumu;
+	// }
+	// // std::cout << fe << " " << fnue << " " << fnumu << " " << ftot <<  std::endl;
+
+	/***********************************************/
+	// This is the fast way to do it.
+	// It doesn't conserve energy, but it hold statistically.
 	double fe = energyFractionElectron(0, 1);
-	double fnue = energyFractionElectronNeutrino(0, 1 - fe);
-	double fnumu = 1 - fe - fnue;
+	double fnue = energyFractionElectronNeutrino(0, 1);
+	double fnumu = energyFractionMuonNeutrino(0, 1);
 
 	if (haveElectrons) {
 		if (random.rand() < pow(fe, thinning)) {

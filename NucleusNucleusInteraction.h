@@ -41,7 +41,8 @@ const double tauMuon = 2.1969811e-6;
  Note that this is a hybrid approach: Kafexhiu is used only to model the gamma-ray
  spectrum due to the pi-0 decay, whereas Kelner+ is used to model everything else.
  */
-class NucleusNucleusInteraction : public crpropa::Module {
+class NucleusNucleusInteraction : public crpropa::Module
+{
 public:
 	std::vector<double> logFraction;
 	std::vector<double> logIncidentEnergy;
@@ -173,15 +174,9 @@ public:
 
 
 /**
- @class NucleusNucleusInteraction
- @brief Handles pp interactions following the parametrisations from:
- 
- Kelner et al. Phys. Rev. D 74 (2006) 034018.
- Kafexhiu et al. Phys. Rev. D 90 (2014) 123014.
- Gaisser et al. Cosmic Rays and Part. Phys. 2016.
-
- Note that this is a hybrid approach: Kafexhiu is used only to model the gamma-ray
- spectrum due to the pi-0 decay, whereas Kelner+ is used to model everything else.
+ @class ParticleDecay
+ @brief Handles the decay of pions, eta mesons, or muons.
+ Functions can be easily adapted for any other particle.
  */
 class ParticleDecay : public crpropa::Module {
 public:
@@ -199,6 +194,7 @@ public:
 	DecayEtaMeson *etaMesonDecay;
 	DecayMuon *muonDecay;
 
+	std::vector<int> decayParticles;
 	bool haveElectrons;
 	bool havePhotons;
 	bool haveNeutrinos;
@@ -206,13 +202,14 @@ public:
 	double limit;
 	double thinning;
 
-	ParticleDecay(bool photons = true, bool neutrinos = true, bool electrons = true, bool muons = true, double thinning = 0, double limit = 0.1);
+	ParticleDecay(bool photons = true, bool neutrinos = true, bool electrons = true, bool muons = true, const std::vector<int>& pList = std::vector<int>(), double thinning = 0, double limit = 0.1);
 	void setLimit(double limit);
 	void setThinning(double thinning);
 	void setHaveElectrons(bool electrons);
 	void setHaveMuons(bool muons);
 	void setHaveNeutrinos(bool neutrinos);
 	void setHavePhotons(bool photons);
+	void setDecayParticles(std::vector<int> v);
 	double lossLength(int id, double lorentzFactor) const; 
 	void process(crpropa::Candidate *candidate) const;
 	void performInteraction(crpropa::Candidate *candidate) const;
