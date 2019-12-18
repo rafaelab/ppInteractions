@@ -254,6 +254,7 @@ void NucleusNucleusInteraction::process(Candidate *candidate) const {
 			rate = 1. / lossLength(id, energy, pos);
 		} else
 			rate = 1. / lossLength(id, energy);
+		// std::cout << kpc / rate << " " << energy / eV << std::endl;
 
 		// find interaction mode with minimum random decay distance
 		Random &random = Random::instance();
@@ -329,7 +330,7 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 		// force stop
 		if (1 - xtot < 1e-10)
 			break;
-		if (counter >= 100)
+		if (counter >= 10)
 			break;
 		counter++;
 	}
@@ -734,7 +735,7 @@ void DecayMuon::initSpectra() {
 		double h0 = 2. - 6. * pow(x, 2.) + 4. * pow(x, 3.);
 		double h1 = -2. + 12. * x - 18. * pow(x, 2.) + 8. * pow(x, 3.);
 		fElectronNeutrino.push_back(h0 + h1);
-		
+
 		// Simplified expressions
 		// double g = 2. + 2. * x * x * (2 * x - 3);
 		// double h = 2. * x * (1 - 2 * x + x * x);
@@ -831,9 +832,9 @@ void DecayMuon::performInteraction(Candidate *candidate) const {
 	// particle disappears after decay
 	candidate->setActive(false);
 
-	/***********************************************/
-	// This is the logical way to do it, using a low tolerance.
-	// double tol = 1.; // hard-coded for now.
+	// /***********************************************/
+	// // This is the logical way to do it, using a low tolerance.
+	// double tol = .8; // hard-coded for now.
 	// double fe = 0;
 	// double fnue = 0;
 	// double fnumu = 0;
@@ -844,14 +845,16 @@ void DecayMuon::performInteraction(Candidate *candidate) const {
 	// 	fnumu = energyFractionMuonNeutrino(0, 1);
 	// 	ftot = fe + fnue + fnumu;
 	// }
-	// // std::cout << fe << " " << fnue << " " << fnumu << " " << ftot <<  std::endl;
 
-	/***********************************************/
-	// This is the fast way to do it.
-	// It doesn't conserve energy, but it hold statistically.
+	// /***********************************************/
+	// // This is the fast way to do it.
+	// // It doesn't conserve energy, but it hold statistically.
 	double fe = energyFractionElectron(0, 1);
 	double fnue = energyFractionElectronNeutrino(0, 1);
 	double fnumu = energyFractionMuonNeutrino(0, 1);
+	double ftot = fe + fnue + fnumu;
+
+	// std::cout << fe << " " << fnue << " " << fnumu << " " << ftot <<  std::endl;
 
 	if (haveElectrons) {
 		if (random.rand() < pow(fe, thinning)) {
@@ -869,4 +872,5 @@ void DecayMuon::performInteraction(Candidate *candidate) const {
 			candidate->addSecondary(sign * 14, E * fnumu, pos, w);	
 		}
 	}
+
 }
