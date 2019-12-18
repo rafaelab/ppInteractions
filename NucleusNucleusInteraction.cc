@@ -145,8 +145,8 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 			double r = 2.6 / sqrt(a);
 			double xalpha = pow(x, alpha);
 			double pf_F = 4 * alpha * bpi * xalpha / x;
-			double f1_F = pow((1 - xalpha) / (1 + r * xalpha * (1 - xalpha)), 4);
-			double f2_F = 1. / (1 - xalpha) + r * (1 - 2 * xalpha) / (1 + r * xalpha * (1 - xalpha));
+			double f1_F = pow((1. - xalpha) / (1. + r * xalpha * (1. - xalpha)), 4.);
+			double f2_F = 1. / (1. - xalpha) + r * (1. - 2. * xalpha) / (1. + r * xalpha * (1. - xalpha));
 			double f3_F_a = sqrt(std::max(0., 1. - (mNeutralPion * c_squared) / epi));
 			double f3_F_b = sqrt(std::max(0., 1. - (mChargedPion * c_squared) / epi));
 			double f_a = pf_F * f1_F * f2_F * f3_F_a;
@@ -155,8 +155,8 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 			fNeutral.push_back(f_a * x);
 
 			// Eta mesons
-			double f4_F = (0.55 + 0.028 * log(x)) * std::max(0., 1 - mEtaMeson * c_squared / epi);
-			fEtaMeson.push_back(f4_F * fNeutral[j]);
+			double f4_F = (0.55 + 0.028 * log(x)) * std::max(0., 1. - mEtaMeson * c_squared / epi);
+			fEtaMeson.push_back(f4_F * fNeutral[j] / x);
 
 			logFCharged.push_back(0);
 			logFNeutral.push_back(0);
@@ -169,6 +169,8 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 		logFNeutral.resize(nx);
 		logFEtaMeson.resize(nx);
 
+
+		// Compute cumulative distribution
 		std::partial_sum(fNeutral.begin(), fNeutral.end(), fNeutral.begin());
 		std::partial_sum(fCharged.begin(), fCharged.end(), fCharged.begin());
 		std::partial_sum(fEtaMeson.begin(), fEtaMeson.end(), fEtaMeson.begin());
@@ -199,6 +201,7 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 		}
 	}
 }
+
 
 double NucleusNucleusInteraction::crossSection(double en) const {
 	// Parametrisation from:
@@ -290,50 +293,44 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 	if (log10(energy) < logIncidentEnergy.front() or (log10(energy) > logIncidentEnergy.back()))
 		return;
 
-	int counter = 0;
-	double xtot = 0;
-	while (xtot < 1) {
-		double x1 = energyFractionNeutralPion(energy, 1e-10, 1. - xtot);
-		double x2 = energyFractionChargedPion(energy, 1e-10, 1. - xtot);
-		double x3 = energyFractionChargedPion(energy, 1e-10, 1. - xtot);
-		double x4 = energyFractionEtaMeson(energy, 1e-10, 1. - xtot);
-		double y = (x1 + x2 + x3 + x4);
-		double x = 0;
-		double r = random.rand();
-		int id;
-		if (r < x1 / y) {
-			id = 111;
-			x = x1;
-		}
-		else if (r >= x1 / y && r < (x1 + x2) / y) {
-			id = 211;
-			x = x2;
-		}
-		else if (r >= (x1 + x2) / y && r < (x1 + x2 + x3) / y) {
-			id = -211;
-			x = x3;
-		}
-		else {
-			id = 221;
-			x = x4;
-		}
-		xtot += x;
+	// double x1 = energyFractionNeutralPion(energy, 0., 1.);
+	// double x2 = energyFractionChargedPion(energy, 0., 1.);
+	// double x3 = energyFractionChargedPion(energy, 0., 1.);
+	// double x4 =    energyFractionEtaMeson(energy, 0., 1.);
+	double x1 = energyFractionNeutralPion(energy, 1e-10, 1.);
+	double x2 = energyFractionChargedPion(energy, 1e-10, 1.);
+	double x3 = energyFractionChargedPion(energy, 1e-10, 1.);
+	double x4 = energyFractionEtaMeson(energy, 1e-10, 1.);
+	double y = (x1 + x2 + x3 + x4);
+	double x = 0;
+	double r = random.rand();
 
-       candidate->setActive(false); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! false works
- 
+	// std::cout << x1 << " " << x2 << " " << x3 << " " << x4 << " " << y << std::endl;
 
-		if (random.rand() < pow(x, thinning)) {
-			double w = w0 / pow(x, thinning);
-			candidate->addSecondary(id, x * energy, pos, w);
-		}
-		
-		// force stop
-		if (1 - xtot < 1e-10)
-			break;
-		if (counter >= 10)
-			break;
-		counter++;
+	int id;
+	if (r < x1 / y) {
+		id = 111;
+		x = x1;
 	}
+	else if (r >= x1 / y && r < (x1 + x2) / y) {
+		id = 211;
+		x = x2;
+	}
+	else if (r >= (x1 + x2) / y && r < (x1 + x2 + x3) / y) {
+		id = -211;
+		x = x3;
+	}
+	else {
+		id = 221;
+		x = x4;
+	}
+
+	if (random.rand() < pow(x, thinning)) {
+		double w = w0 / pow(x, thinning);
+		candidate->addSecondary(id, x * energy, pos, w);
+	}
+
+	candidate->current.setEnergy((1 - x) * energy);
 }
 
 ///////////////////////////////////////////////////
