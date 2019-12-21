@@ -1,6 +1,15 @@
 from crpropa import *
 import NucleusNucleusInteraction as ppint
 
+photons = True
+neutrinos = True
+electrons = True
+muons = True
+thinning = .9
+density = 1e13
+d = 1. * kpc # source distance
+e = 1e16 * eV # proton energy
+
 
 obs = Observer()
 obs.add(ObserverPoint())
@@ -8,21 +17,19 @@ output = TextOutput('test.txt', Output.Event1D)
 output.setEnergyScale(eV)
 obs.onDetection(output)
 
-nn = ppint.NucleusNucleusInteraction(1.)
-pd = ppint.ParticleDecay()
+pd = ppint.ParticleDecay(photons, neutrinos, electrons, muons, thinning) # must be called
+nn = ppint.NucleusNucleusInteraction(density, thinning)
 
 sim = ModuleList()
-
 sim.add(SimplePropagation())
-sim.add(MaximumTrajectoryLength(100 * Mpc))
-sim.add(MinimumEnergy(1e9 * eV))
-sim.add(pp.NucleusNucleusInteraction(1e-3))
-sim.add(pp.ParticleDecay())
+sim.add(MinimumEnergy(1e10 * eV)) # code is not tested below this energy
+sim.add(nn)
+sim.add(pd)
 sim.add(obs)
 
 source = Source()
-source.add(SourceEnergy(1e18 * eV))
-source.add(SourcePosition(Vector3d(100 * Mpc, 0, 0)))
+source.add(SourceEnergy(e))
+source.add(SourcePosition(Vector3d(d, 0, 0)))
 source.add(SourceDirection(Vector3d(-1, 0, 0)))
 source.add(SourceParticleType(nucleusId(1, 1)))
 
