@@ -15,4 +15,13 @@ Information about CRPropa 3 can be found [here](https://github.com/CRPropa/CRPro
 Alves Batista et al. J. Cosmol. Astropart. Phys. 05 (2016) 038.
 
 
-Note: This plugin is still not ready and contains many bugs. 
+## Notes
+- The production of secondaries does not conserve energy at each interaction, only statistically.
+- The NucleusNucleusInteraction module produces mesons (pions, eta). The ParticleDecay model performs the actual decays of these particles.
+
+## To-do
+- For now this module only performs proton-proton interactions, but it will soon be extended for nucleus-nucleus interactions.
+
+## Disclaimer
+This plugin is still being tested and may contain bugs. 
+Use it at your own risk.
