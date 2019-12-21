@@ -2,24 +2,19 @@
 
 using namespace crpropa;
 
-NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, bool photons, bool electrons, bool neutrinos, double thinning, double limit) : Module() {
+NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, double thinning, double limit) : Module() {
 	setFieldNorm(normMatterField);
-	setHaveElectrons(electrons);
-	setHaveNeutrinos(neutrinos);
-	setHavePhotons(photons);
 	setLimit(limit);
 	setIsDensityConstant(true);
+	setThinning(thinning);
 	initMesonSpectra();
 	setDescription("NucleusNucleusInteraction");
 }
 
-NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<ScalarGrid> grid, double normMatterField, bool photons, bool electrons, bool neutrinos, double limit) : Module() {
-	// initSpectra();
+NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<ScalarGrid> grid, double normMatterField, double thinning, double limit) : Module() {
 	setFieldNorm(normMatterField);
-	setHaveElectrons(electrons);
-	setHaveNeutrinos(neutrinos);
-	setHavePhotons(photons);
 	setLimit(limit);
+	setThinning(thinning);
 	setDescription("NucleusNucleusInteraction");
 	setIsDensityConstant(false);
 	if (normMatterField != 1) 
@@ -32,17 +27,6 @@ void NucleusNucleusInteraction::setIsDensityConstant(bool b) {
 	isDensityConstant = b;
 }
 
-void NucleusNucleusInteraction::setHaveElectrons(bool b) {
-	haveElectrons = b;
-}
-
-void NucleusNucleusInteraction::setHavePhotons(bool b) {
-	havePhotons = b;
-}
-
-void NucleusNucleusInteraction::setHaveNeutrinos(bool b) {
-	haveNeutrinos = b;
-}
 
 void NucleusNucleusInteraction::setFieldNorm(double x) {
 	if (x == 0) 
@@ -56,24 +40,6 @@ void NucleusNucleusInteraction::setLimit(double l) {
 
 void NucleusNucleusInteraction::setThinning(double thinning) {
 	thinning = thinning;
-}
-
-void NucleusNucleusInteraction::decayAll(bool b) {
-	this->decayNeutralPion(b);
-	this->decayChargedPion(b);
-	this->decayMuon(b);
-}
-
-void NucleusNucleusInteraction::decayNeutralPion(bool b) {
-	doDecayNeutralPion = b;
-}
-
-void NucleusNucleusInteraction::decayChargedPion(bool b) {
-	doDecayChargedPion = b;
-}
-
-void NucleusNucleusInteraction::decayMuon(bool b) {
-	doDecayMuon = b;
 }
 
 void NucleusNucleusInteraction::initMesonSpectra() {
@@ -201,7 +167,6 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 		}
 	}
 }
-
 
 double NucleusNucleusInteraction::crossSection(double en) const {
 	// Parametrisation from:
@@ -538,8 +503,6 @@ void DecayChargedPion::performInteraction(Candidate *candidate) const {
 	candidate->setActive(false);
 
 	double f = energyFractionMuon();
-	if (f < 1e-10) f = 0.;
-	if (f > 1.) f = 1.;
 	if (haveMuons) {
 		if (random.rand() < pow(1 - f, thinning)) {
 			double w = w0 / pow(1 - f, thinning);
@@ -846,9 +809,9 @@ void DecayMuon::performInteraction(Candidate *candidate) const {
 	// /***********************************************/
 	// // This is the fast way to do it.
 	// // It doesn't conserve energy, but it hold statistically.
-	double fe = energyFractionElectron(0, 1);
-	double fnue = energyFractionElectronNeutrino(0, 1);
-	double fnumu = energyFractionMuonNeutrino(0, 1);
+	double fe = energyFractionElectron(1e-10, 1);
+	double fnue = energyFractionElectronNeutrino(1e-10, 1);
+	double fnumu = energyFractionMuonNeutrino(1e-10, 1);
 	double ftot = fe + fnue + fnumu;
 
 	// std::cout << fe << " " << fnue << " " << fnumu << " " << ftot <<  std::endl;

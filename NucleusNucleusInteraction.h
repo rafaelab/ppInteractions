@@ -67,20 +67,13 @@ public:
 	double normMatterField;
 	bool isDensityConstant;
 
-	NucleusNucleusInteraction(double normMatterField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double thinning = 0, double limit = 0.1);
-	NucleusNucleusInteraction(crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid, double normMatterField = 1., bool photons = false, bool electrons = false, bool neutrinos = false, double limit = 0.1);
+	NucleusNucleusInteraction(double normMatterField = 1., double thinning = 0, double limit = 0.1);
+	NucleusNucleusInteraction(crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid, double normMatterField = 1., double thinning = 0, double limit = 0.1);
 	void setLimit(double limit);
 	void setThinning(double thinning);
-	void setHaveElectrons(bool electrons);
-	void setHaveNeutrinos(bool neutrinos);
-	void setHavePhotons(bool photons);
 	void setFieldNorm(double normMatterField);
 	void setIsDensityConstant(bool densityConstant);
 	void initMesonSpectra();
-	void decayAll(bool b);
-	void decayNeutralPion(bool b);
-	void decayChargedPion(bool b);
-	void decayMuon(bool b);
 	double crossSection(double energy) const;
 	double energyFractionNeutralPion(double energy, double xmin = 0, double xmax = 1) const;
 	double energyFractionChargedPion(double energy, double xmin = 0, double xmax = 1) const;
