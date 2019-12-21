@@ -38,8 +38,8 @@ void NucleusNucleusInteraction::setLimit(double l) {
 	limit = l;
 }
 
-void NucleusNucleusInteraction::setThinning(double thinning) {
-	thinning = thinning;
+void NucleusNucleusInteraction::setThinning(double t) {
+	thinning = t;
 }
 
 void NucleusNucleusInteraction::initMesonSpectra() {
@@ -222,7 +222,6 @@ void NucleusNucleusInteraction::process(Candidate *candidate) const {
 			rate = 1. / lossLength(id, energy, pos);
 		} else
 			rate = 1. / lossLength(id, energy);
-		// std::cout << kpc / rate << " " << energy / eV << std::endl;
 
 		// find interaction mode with minimum random decay distance
 		Random &random = Random::instance();
@@ -270,8 +269,6 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 	double x = 0;
 	double r = random.rand();
 
-	// std::cout << x1 << " " << x2 << " " << x3 << " " << x4 << " " << y << std::endl;
-
 	int id;
 	if (r < x1 / y) {
 		id = 111;
@@ -301,7 +298,7 @@ void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
 ///////////////////////////////////////////////////
 ///////////////////////////////////////////////////
 ///////////////////////////////////////////////////
-ParticleDecay::ParticleDecay(bool photons, bool electrons, bool neutrinos, bool muons, const std::vector<int>& pList, double thinning, double limit) : Module() {
+ParticleDecay::ParticleDecay(bool photons, bool electrons, bool neutrinos, bool muons, double thinning, const std::vector<int>& pList, double limit) : Module() {
 	setHaveElectrons(electrons);
 	setHaveNeutrinos(neutrinos);
 	setHavePhotons(photons);
@@ -456,7 +453,6 @@ DecayChargedPion::DecayChargedPion(bool muons, bool neutrinos, double thinning, 
 	setHaveNeutrinos(neutrinos);
 	setThinning(thinning);
 	setLimit(limit);
-	// setDescription("ChargedPionDecay");
 }
 
 void DecayChargedPion::setHaveMuons(bool b) {
@@ -524,7 +520,6 @@ DecayNeutralPion::DecayNeutralPion(bool photons, double thinning, double limit) 
 	setHavePhotons(photons);
 	setLimit(limit);
 	setThinning(thinning);
-	// setDescription("NeutralPionDecay");
 }
 
 void DecayNeutralPion::setHavePhotons(bool b) {
@@ -581,7 +576,6 @@ DecayEtaMeson::DecayEtaMeson(bool photons, double thinning, double limit) {
 	setHavePhotons(photons);
 	setLimit(limit);
 	setThinning(thinning);
-	// setDescription("EtaMesonDecay");
 }
 
 void DecayEtaMeson::setHavePhotons(bool b) {
@@ -640,7 +634,6 @@ DecayMuon::DecayMuon(bool neutrinos, bool electrons, double thinning, double lim
 	setLimit(limit);
 	setThinning(thinning);
 	initSpectra();
-	// setDescription("MuonDecay");
 }
 
 void DecayMuon::initSpectra() {
@@ -808,13 +801,11 @@ void DecayMuon::performInteraction(Candidate *candidate) const {
 
 	// /***********************************************/
 	// // This is the fast way to do it.
-	// // It doesn't conserve energy, but it hold statistically.
+	// // It doesn't conserve energy, but it holds statistically.
 	double fe = energyFractionElectron(1e-10, 1);
 	double fnue = energyFractionElectronNeutrino(1e-10, 1);
 	double fnumu = energyFractionMuonNeutrino(1e-10, 1);
 	double ftot = fe + fnue + fnumu;
-
-	// std::cout << fe << " " << fnue << " " << fnumu << " " << ftot <<  std::endl;
 
 	if (haveElectrons) {
 		if (random.rand() < pow(fe, thinning)) {
