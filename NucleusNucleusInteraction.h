@@ -195,7 +195,7 @@ public:
 	double limit;
 	double thinning;
 
-	ParticleDecay(bool photons = true, bool neutrinos = true, bool electrons = true, bool muons = true, const std::vector<int>& pList = std::vector<int>(), double thinning = 0, double limit = 0.1);
+	ParticleDecay(bool photons = true, bool neutrinos = true, bool electrons = true, bool muons = true, double thinning = 0, const std::vector<int>& pList = std::vector<int>(), double limit = 0.1);
 	void setLimit(double limit);
 	void setThinning(double thinning);
 	void setHaveElectrons(bool electrons);
