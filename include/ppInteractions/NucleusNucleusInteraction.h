@@ -17,6 +17,7 @@
 #include <crpropa/Grid.h>
 #include <crpropa/GridTools.h>
 #include <crpropa/Candidate.h>
+#include <crpropa/Vector3.h>
 
 #include "ppInteractions/ParticleDecay.h"
 

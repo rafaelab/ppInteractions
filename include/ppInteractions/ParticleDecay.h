@@ -1,15 +1,13 @@
 #ifndef PARTICLEDECAY_H
 #define PARTICLEDECAY_H
 
-#include <crpropa/Module.h>
 #include <crpropa/Units.h>
 #include <crpropa/Common.h>
 #include <crpropa/ParticleID.h>
 #include <crpropa/ParticleMass.h>
 #include <crpropa/Random.h>
-#include <crpropa/Grid.h>
-#include <crpropa/GridTools.h>
 #include <crpropa/Candidate.h>
+#include <crpropa/Vector3.h>
 
 #include "ppInteractions/DecayMuon.h"
 #include "ppInteractions/DecayChargedPion.h"

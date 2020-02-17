@@ -1,4 +1,4 @@
-#include "ParticleDecay.h"
+#include "ppInteractions/ParticleDecay.h"
 
 using namespace crpropa;
 
