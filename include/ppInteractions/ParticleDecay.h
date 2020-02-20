@@ -9,6 +9,7 @@
 #include <crpropa/Candidate.h>
 #include <crpropa/Vector3.h>
 
+#include "ppInteractions/Constants.h"
 #include "ppInteractions/DecayMuon.h"
 #include "ppInteractions/DecayChargedPion.h"
 #include "ppInteractions/DecayNeutralPion.h"
