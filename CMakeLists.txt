@@ -8,39 +8,40 @@ find_package(PythonInterp)
 find_package(PythonLibs)
 find_package(SWIG REQUIRED)
 
-# get information on crpropa
-execute_process(COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/findCRPropa.py" swig_interface OUTPUT_VARIABLE crpropaSwigPath)
-execute_process(COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/findCRPropa.py" install_prefix OUTPUT_VARIABLE crpropaInstallPrefix)
-message(STATUS "CRPropa includes : ${crpropaInstallPrefix}")
+# get information on CRPropa
+execute_process(COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/python/findCRPropa.py" swig_interface OUTPUT_VARIABLE CRPROPA_SWIG_PATH)
+execute_process(COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/python/findCRPropa.py" install_prefix OUTPUT_VARIABLE CRPROPA_INSTALL_PREFIX)
+message(STATUS "CRPropa includes : ${CRPROPA_INSTALL_PREFIX}")
 
-find_path(CRPROPA_SWIG_INTERFACE_FILES
-  crpropa.i
-  HINTS crpropa/ share/crpropa python/ ${crpropaSwigPath} 
-  )
+find_path(CRPROPA_SWIG_INTERFACE_FILES crpropa.i HINTS crpropa/ share/crpropa python/ ${CRPROPA_SWIG_PATH})
 
-find_path(CRPROPA_INCLUDES
-  CRPropa.h
-  HINTS crpropa/ include/crpropa ${crpropaInstallPrefix}/include/
-  )
+find_path(CRPROPA_INCLUDES CRPropa.h HINTS crpropa/ include/crpropa ${CRPROPA_INSTALL_PREFIX}/include/)
 
-find_library(CRPROPA_LIB NAMES crpropa libcrpropa HINTS crpropa/ lib/crpropa crpropa/lib ${crpropaInstallPrefix}/lib/)
+find_library(CRPROPA_LIB NAMES crpropa libcrpropa HINTS crpropa/ lib/crpropa crpropa/lib ${CRPROPA_INSTALL_PREFIX}/lib/)
 
 message(STATUS "CRPropa SWIG interface files: ${CRPROPA_SWIG_INTERFACE_FILES}")
 message(STATUS "CRPropa includes : ${CRPROPA_INCLUDES}")
 message(STATUS "CRPropa lib: ${CRPROPA_LIB}")
 
-# swig plugin
+# SWIG plugin
 set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${PLUGINNAME}_wrap.cxx PROPERTIES GENERATED true )
 add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${PLUGINNAME}_wrap.cxx
-  COMMAND swig -builtin -c++ -python ${PY3} -I${CRPROPA_SWIG_INTERFACE_FILES} -I${CRPROPA_INCLUDES} -I${CMAKE_SOURCE_DIR}/include -I${PYTHON_INCLUDE_DIRS} ${CRPROPA_SWIG_DEFINES} -dirprot -o ${CMAKE_CURRENT_BINARY_DIR}/${PLUGINNAME}_wrap.cxx -outdir ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${PLUGINNAME}.i)
+  COMMAND swig -c++ -python ${PY3} -I${CRPROPA_SWIG_INTERFACE_FILES} -I${CRPROPA_INCLUDES} -I${CMAKE_SOURCE_DIR}/include -I${PYTHON_INCLUDE_DIRS} ${CRPROPA_SWIG_DEFINES} -dirprot -o ${CMAKE_CURRENT_BINARY_DIR}/${PLUGINNAME}_wrap.cxx -outdir ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/python/${PLUGINNAME}.i)
 
 include_directories(include ${CMAKE_CURRENT_BINARY_DIR}/include ${CRPROPA_INCLUDES} ${PYTHON_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR})
+
 
 # build interface and source in one library
 add_library(${PLUGINNAME} MODULE 
   ${CMAKE_CURRENT_BINARY_DIR}/${PLUGINNAME}_wrap.cxx
-  ${CMAKE_CURRENT_SOURCE_DIR}/${PLUGINNAME}.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/NucleusNucleusInteraction.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ParticleDecay.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/DecayEtaMeson.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/DecayChargedPion.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/DecayNeutralPion.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/DecayMuon.cc
   )
+
 
 target_link_libraries(${PLUGINNAME} ${CRPROPA_LIB} ${PYTHON_LIBRARIES})
 
@@ -59,3 +60,17 @@ sysconfig.get_python_lib(1,0,prefix='${CMAKE_INSTALL_PREFIX}'))"
 # install(TARGETS ${PLUGINNAME} LIBRARY DESTINATION "${PYTHON_SITE_PACKAGES}/${PLUGINNAME}")
 
 
+#option(ENABLE_TESTING "Build tests and enable test target" OFF)
+#if(ENABLE_TESTING)
+#  include_directories(${CRPROPA_INSTALL_PREFIX}/include/gtest)
+#  link_directories(${CRPROPA_INSTALL_PREFIX}/libs/gtest)
+#  message(STATUS "Google testin suite (from CRPropa): ${CRPROPA_INSTALL_PREFIX}/libs/gtest/include")
+#  if(APPLE)
+#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DGTEST_USE_OWN_TR1_TUPLE=1")
+#  endif(APPLE)
+#
+#  enable_testing()
+#  add_executable(testMatrix test/testMatrix.cpp)
+#  target_link_libraries(testMatrix gtest gtest_main pthread)
+#  add_test(testMatrix testMatrix)
+#endif(ENABLE_TESTING)
