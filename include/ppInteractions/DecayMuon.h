@@ -1,6 +1,11 @@
 #ifndef DECAYMUON_H
 #define DECAYMUON_H
 
+#include <cmath>
+#include <limits>
+#include <algorithm>
+#include <numeric>
+
 #include <crpropa/Module.h>
 #include <crpropa/Units.h>
 #include <crpropa/Common.h>
@@ -11,6 +16,8 @@
 #include <crpropa/GridTools.h>
 #include <crpropa/Candidate.h>
 #include <crpropa/Vector3.h>
+
+#include "ppInteractions/Constants.h"
 
 class DecayMuon {
 public:

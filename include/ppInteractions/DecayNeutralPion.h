@@ -9,6 +9,8 @@
 #include <crpropa/Candidate.h>
 #include <crpropa/Vector3.h>
 
+#include "ppInteractions/Constants.h"
+
 class DecayNeutralPion {
 public:
 
