@@ -1,4 +1,4 @@
-%module(directors="1", threads="1", allprotected="1") ppInteractions
+%module(directors="1", threads="1", allprotected="1") NucleusNucleusInteraction
 
 %include "std_string.i"
 %include "std_iostream.i"
