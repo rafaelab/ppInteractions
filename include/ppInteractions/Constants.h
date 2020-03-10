@@ -3,7 +3,6 @@
 
 #include <crpropa/Units.h>
 
-// particle masses in eV
 const double mChargedPion = 1.39570 * 1e8 * crpropa::eV / crpropa::c_squared;
 const double mNeutralPion = 1.34977 * 1e8 * crpropa::eV / crpropa::c_squared;
 const double mEtaMeson = 5.47862 * 1e8 * crpropa::eV / crpropa::c_squared;
