@@ -48,7 +48,7 @@ public:
 	std::vector<double> etaMesonFraction;
 	std::vector<double> probabilities;
 
-	crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid;
+	crpropa::ref_ptr<crpropa::Grid1f> densityGrid;
 
 	bool haveElectrons;
 	bool havePhotons;
@@ -64,7 +64,7 @@ public:
 	bool isDensityConstant;
 
 	NucleusNucleusInteraction(double normMatterField = 1., double thinning = 0, double limit = 0.1);
-	NucleusNucleusInteraction(crpropa::ref_ptr<crpropa::ScalarGrid> densityGrid, double normMatterField = 1., double thinning = 0, double limit = 0.1);
+	NucleusNucleusInteraction(crpropa::ref_ptr<crpropa::Grid1f> densityGrid, double normMatterField = 1., double thinning = 0, double limit = 0.1);
 	void setLimit(double limit);
 	void setThinning(double thinning);
 	void setFieldNorm(double normMatterField);

@@ -11,7 +11,7 @@ NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, dou
 	setDescription("NucleusNucleusInteraction");
 }
 
-NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<ScalarGrid> grid, double normMatterField, double thinning, double limit) : Module() {
+NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<Grid1f> grid, double normMatterField, double thinning, double limit) : Module() {
 	setFieldNorm(normMatterField);
 	setLimit(limit);
 	setThinning(thinning);
