@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-# Change name of the library to something meaningful!
 set(PLUGINNAME "NucleusNucleusInteraction")
 project(${PLUGINNAME} C CXX)
 
