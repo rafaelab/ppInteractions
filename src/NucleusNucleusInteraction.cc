@@ -168,43 +168,43 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 	}
 }
 
-double NucleusNucleusInteraction::crossSection(double en) const {
+double NucleusNucleusInteraction::crossSection(const double& energy) const {
 	// Parametrisation from:
 	//   Kafexhiu et al. PRD 90 (2014) 123014.
 	// Note: only works for en >> Ethr
 	// Values are given in mb, hence the 1e-31 factor
 	double ethr = 2.797e8 * eV;
-	double x = (en - mass_proton * c_squared) / ethr;
+	double x = (energy - mass_proton * c_squared) / ethr;
 	double res = (30.7 - 0.96 * log(x) + 0.18 * log(x) * log(x)) * pow(1. - pow(1. / x, 1.9), 3);
 	return res * 1e-31; 
 }
 
-double NucleusNucleusInteraction::energyFractionChargedPion(double energy, double xmin, double xmax) const {
+double NucleusNucleusInteraction::energyFractionChargedPion(const double& energy, const double& xmin, const double& xmax) const {
 	Random &random = Random::instance();
 	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, chargedPionFraction);
 }
 
-double NucleusNucleusInteraction::energyFractionNeutralPion(double energy, double xmin, double xmax) const {
+double NucleusNucleusInteraction::energyFractionNeutralPion(const double& energy, const double& xmin, const double& xmax) const {
 	Random &random = Random::instance();
 	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, neutralPionFraction);
 }
 
-double NucleusNucleusInteraction::energyFractionEtaMeson(double energy, double xmin, double xmax) const {
+double NucleusNucleusInteraction::energyFractionEtaMeson(const double& energy, const double& xmin, const double& xmax) const {
 	Random &random = Random::instance();
 	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, etaMesonFraction);
 }
 
-double NucleusNucleusInteraction::lossLength(int id, double energy) const {
+double NucleusNucleusInteraction::lossLength(const int& id, const double& energy) const {
 	double rate = crossSection(energy) * normMatterField;
 	return 1. / rate;
 }
 
-double NucleusNucleusInteraction::lossLength(int id, double energy, Vector3d position) const {
+double NucleusNucleusInteraction::lossLength(const int& id, const double& energy, const Vector3d& position) const {
 	double rate = crossSection(energy) * densityGrid->interpolate(position);
 	return 1. / rate;
 }
 
-void NucleusNucleusInteraction::process(Candidate *candidate) const {
+void NucleusNucleusInteraction::process(Candidate* candidate) const {
 
 	// check if nucleus
 	int id = candidate->current.getId();
@@ -243,7 +243,7 @@ void NucleusNucleusInteraction::process(Candidate *candidate) const {
 	} while (step > 0);
 }
 
-void NucleusNucleusInteraction::performInteraction(Candidate *candidate) const {
+void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 	
 	double energy = candidate->current.getEnergy();
 	double w0 = candidate->getWeight();
