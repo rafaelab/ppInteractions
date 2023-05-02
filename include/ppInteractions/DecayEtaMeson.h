@@ -16,19 +16,18 @@
 
 
 class DecayEtaMeson {
-public:
-
-	bool havePhotons;
-	double limit;
-	double thinning;
-
-	DecayEtaMeson(bool photons = true, double thinning = 0, double limit = 0.05);
-	void setLimit(double limit);
-	void setThinning(double thinning);
-	void setHavePhotons(bool photons);
-	double lossLength(double lorentzFactor) const; 
-	double energyFractionPhoton() const; 
-	void performInteraction(crpropa::Candidate *candidate) const;
+	protected:
+		bool havePhotons;
+		double limit;
+		double thinning;
+	public:
+		DecayEtaMeson(bool photons = true, double thinning = 0, double limit = 0.05);
+		void setLimit(double limit);
+		void setThinning(double thinning);
+		void setHavePhotons(bool photons);
+		double lossLength(const double& lorentzFactor) const; 
+		double energyFractionPhoton() const; 
+		void performInteraction(crpropa::Candidate* candidate) const;
 };
 
 

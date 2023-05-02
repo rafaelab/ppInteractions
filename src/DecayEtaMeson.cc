@@ -20,18 +20,15 @@ void DecayEtaMeson::setThinning(double thinning) {
 	thinning = thinning;
 }
 
-double DecayEtaMeson::lossLength(double lf) const {
-	// Returns the loss length in the lab frame.
-	double lifetime;
-	lifetime = tauEtaMeson;
-	return c_light * lifetime * lf;
+double DecayEtaMeson::lossLength(const double& lf) const {
+	return c_light * tauEtaMeson * lf;
 }
 
 double DecayEtaMeson::energyFractionPhoton() const {
 	return 0.5;
 }
 
-void DecayEtaMeson::performInteraction(Candidate *candidate) const {
+void DecayEtaMeson::performInteraction(Candidate* candidate) const {
 
 	double E = candidate->current.getEnergy();  
 	double w0 = candidate->getWeight();
