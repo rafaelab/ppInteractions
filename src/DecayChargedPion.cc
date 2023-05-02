@@ -2,6 +2,7 @@
 
 using namespace crpropa;
 
+
 DecayChargedPion::DecayChargedPion(bool muons, bool neutrinos, double thinning, double limit) {
 	setHaveMuons(muons);
 	setHaveNeutrinos(neutrinos);
@@ -25,21 +26,17 @@ void DecayChargedPion::setThinning(double thinning) {
 	thinning = thinning;
 }
 
-double DecayChargedPion::lossLength(double lf) const {
+double DecayChargedPion::lossLength(const double& lf) const {
 	// Returns the loss length in the lab frame.
-	double lifetime;
-	lifetime = tauChargedPion;
+	const static double lifetime = tauChargedPion;
 	return c_light * lifetime * lf;
 }
 
 double DecayChargedPion::energyFractionMuon() const {
-	// Random &random = Random::instance();
-	// double r = 1 - pow(mMuon / mChargedPion, 2);
-	// return random.randUniform(0., 1 - r);
-	return pow(mMuon / mChargedPion, 2.);
+	return pow_integer<2>(mMuon / mChargedPion);
 }
 
-void DecayChargedPion::performInteraction(Candidate *candidate) const {
+void DecayChargedPion::performInteraction(Candidate* candidate) const {
 
 	int id = candidate->current.getId();
 	double sign = (id > 0) ? 1 : ((id < 0) ? -1 : 0);
