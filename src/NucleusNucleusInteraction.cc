@@ -27,7 +27,6 @@ void NucleusNucleusInteraction::setIsDensityConstant(bool b) {
 	isDensityConstant = b;
 }
 
-
 void NucleusNucleusInteraction::setFieldNorm(double x) {
 	if (x == 0) 
 		x = std::numeric_limits<double>::min();
@@ -40,6 +39,18 @@ void NucleusNucleusInteraction::setLimit(double l) {
 
 void NucleusNucleusInteraction::setThinning(double t) {
 	thinning = t;
+}
+
+void NucleusNucleusInteraction::setHavePhotons(bool b) {
+	havePhotons = b;
+}
+
+void NucleusNucleusInteraction::setHaveElectrons(bool b) {
+	haveElectrons = b;
+}
+
+void NucleusNucleusInteraction::setHaveNeutrinos(bool b) {
+	haveNeutrinos = b;
 }
 
 void NucleusNucleusInteraction::initMesonSpectra() {
@@ -273,16 +284,13 @@ void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 	if (r < x1 / y) {
 		id = 111;
 		x = x1;
-	}
-	else if (r >= x1 / y && r < (x1 + x2) / y) {
+	} else if (r >= x1 / y && r < (x1 + x2) / y) {
 		id = 211;
 		x = x2;
-	}
-	else if (r >= (x1 + x2) / y && r < (x1 + x2 + x3) / y) {
+	} else if (r >= (x1 + x2) / y && r < (x1 + x2 + x3) / y) {
 		id = -211;
 		x = x3;
-	}
-	else {
+	} else {
 		id = 221;
 		x = x4;
 	}

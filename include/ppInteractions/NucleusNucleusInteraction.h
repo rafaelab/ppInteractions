@@ -38,7 +38,6 @@
  spectrum due to the pi-0 decay, whereas Kelner+ is used to model everything else.
  */
 class NucleusNucleusInteraction : public crpropa::Module {
-	public:
 		std::vector<double> logFraction;
 		std::vector<double> logIncidentEnergy;
 		std::vector<double> logProbabilities;
@@ -46,9 +45,7 @@ class NucleusNucleusInteraction : public crpropa::Module {
 		std::vector<double> chargedPionFraction;
 		std::vector<double> etaMesonFraction;
 		std::vector<double> probabilities;
-
 		crpropa::ref_ptr<crpropa::Grid1f> densityGrid;
-
 		bool haveElectrons;
 		bool havePhotons;
 		bool haveNeutrinos;
@@ -61,12 +58,17 @@ class NucleusNucleusInteraction : public crpropa::Module {
 		double thinning;
 		double normMatterField;
 		bool isDensityConstant;
+
+	public:
 		NucleusNucleusInteraction(double normMatterField = 1., double thinning = 0, double limit = 0.1);
 		NucleusNucleusInteraction(crpropa::ref_ptr<crpropa::Grid1f> densityGrid, double normMatterField = 1., double thinning = 0, double limit = 0.1);
 		void setLimit(double limit);
 		void setThinning(double thinning);
 		void setFieldNorm(double normMatterField);
 		void setIsDensityConstant(bool densityConstant);
+		void setHavePhotons(bool photons);
+		void setHaveElectrons(bool electorns);
+		void setHaveNeutrinos(bool neutrinos);
 		void initMesonSpectra();
 		double crossSection(const double& energy) const;
 		double energyFractionNeutralPion(const double& energy, const double& xmin = 0, const double& xmax = 1) const;
