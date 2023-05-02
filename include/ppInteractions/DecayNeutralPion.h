@@ -12,19 +12,19 @@
 #include "ppInteractions/Constants.h"
 
 class DecayNeutralPion {
-public:
+	protected:
+		bool havePhotons;
+		double limit;
+		double thinning;
 
-	bool havePhotons;
-	double limit;
-	double thinning;
-
-	DecayNeutralPion(bool photons = true, double thinning = 0, double limit = 0.05);
-	void setLimit(double limit);
-	void setThinning(double thinning);
-	void setHavePhotons(bool photons);
-	double lossLength(double lorentzFactor) const; 
-	double energyFractionPhoton() const; 
-	void performInteraction(crpropa::Candidate *candidate) const;
+	public:
+		DecayNeutralPion(bool photons = true, double thinning = 0, double limit = 0.05);
+		void setLimit(double limit);
+		void setThinning(double thinning);
+		void setHavePhotons(bool photons);
+		double lossLength(const double& lorentzFactor) const; 
+		double energyFractionPhoton() const; 
+		void performInteraction(crpropa::Candidate* candidate) const;
 };
 
 

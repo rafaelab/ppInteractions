@@ -48,19 +48,19 @@ void DecayMuon::initSpectra() {
 	std::vector<double> logFElectronNeutrino; // from muon decay
 	std::vector<double> logFMuonNeutrino; // from muon decay
 
-	for (int j = 0; j < nx; j++) {
+	for (size_t j = 0; j < nx; j++) {
 		// Equations from Gaisser's book, 2016, tab. 6.2
 		double x = pow(10, logFraction[j]); 
 
 		// electrons/muon neutrinos from muon decay
-		double g0 = 5. / 3. - 3. * pow(x, 2.) + 4. / 3. * pow(x, 3.);
-		double g1 = 1. / 3. - 3. * pow(x, 2.) + 8. / 3. * pow(x, 3.);
+		double g0 = 5. / 3. - 3. * pow_integer<2>(x) + 4. / 3. * pow_integer<3>(x);
+		double g1 = 1. / 3. - 3. * pow_integer<2>(x) + 8. / 3. * pow_integer<3>(x);
 		fElectron.push_back(g0 + g1);
 		fMuonNeutrino.push_back(g0 + g1);
 
 		// electron neutrinos from muon decay
-		double h0 = 2. - 6. * pow(x, 2.) + 4. * pow(x, 3.);
-		double h1 = -2. + 12. * x - 18. * pow(x, 2.) + 8. * pow(x, 3.);
+		double h0 = 2. - 6. * pow_integer<2>(x) + 4. * pow_integer<3>(x);
+		double h1 = -2. + 12. * x - 18. * pow_integer<2>(x) + 8. * pow_integer<3>(x);
 		fElectronNeutrino.push_back(h0 + h1);
 
 		// Simplified expressions
@@ -84,7 +84,7 @@ void DecayMuon::initSpectra() {
 	double normElectronNeutrino = 1. / *std::max_element(fElectronNeutrino.begin(), fElectronNeutrino.end());
 	double normMuonNeutrino = 1. / *std::max_element(fMuonNeutrino.begin(), fMuonNeutrino.end());
 
-	for (int j = 0; j < nx; j++) {
+	for (size_t j = 0; j < nx; j++) {
 		fElectron[j] *= normElectron;
 		fElectronNeutrino[j] *= normElectronNeutrino;
 		fMuonNeutrino[j] *= normMuonNeutrino;
@@ -97,7 +97,7 @@ void DecayMuon::initSpectra() {
 	logFMuonNeutrino.resize(nx);
 
 	// Invert distribution and sample from it
-	for (int j = 0; j < probabilities.size(); j++) {
+	for (size_t j = 0; j < probabilities.size(); j++) {
 		double y1 = interpolate(log10(probabilities[j]), logFMuonNeutrino, logFraction);
 		double y2 = interpolate(log10(probabilities[j]), logFElectron, logFraction);
 		double y3 = interpolate(log10(probabilities[j]), logFElectronNeutrino, logFraction);
@@ -108,7 +108,6 @@ void DecayMuon::initSpectra() {
 }
 
 void DecayMuon::setHaveElectrons(bool b) {
-	//
 	haveElectrons = b;
 }
 
@@ -124,29 +123,26 @@ void DecayMuon::setThinning(double thinning) {
 	thinning = thinning;
 }
 
-double DecayMuon::lossLength(double lf) const {
-	// Returns the loss length in the lab frame.
-	double lifetime;
-	lifetime = tauMuon;
-	return c_light * lifetime * lf;
+double DecayMuon::lossLength(const double& lf) const {
+	return c_light * tauMuon * lf;
 }
 
-double DecayMuon::energyFractionElectron(double xmin, double xmax) const {
+double DecayMuon::energyFractionElectron(const double& xmin, const double& xmax) const {
 	Random &random = Random::instance();
 	return interpolate(random.randUniform(xmin, xmax), probabilities, electronFraction);
 }
 
-double DecayMuon::energyFractionElectronNeutrino(double xmin, double xmax) const {
+double DecayMuon::energyFractionElectronNeutrino(const double& xmin, const double& xmax) const {
 	Random &random = Random::instance();
 	return interpolate(random.randUniform(xmin, xmax),probabilities, electronNeutrinoFraction);
 }
 
-double DecayMuon::energyFractionMuonNeutrino(double xmin, double xmax) const {
+double DecayMuon::energyFractionMuonNeutrino(const double& xmin, const double& xmax) const {
 	Random &random = Random::instance();
 	return interpolate(random.randUniform(xmin, xmax), probabilities, muonNeutrinoFraction);
 }
 
-void DecayMuon::performInteraction(Candidate *candidate) const {
+void DecayMuon::performInteraction(Candidate* candidate) const {
 
 	double E = candidate->current.getEnergy();    
 	double w0 = candidate->getWeight();

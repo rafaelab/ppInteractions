@@ -20,19 +20,16 @@ void DecayNeutralPion::setThinning(double thinning) {
 	thinning = thinning;
 }
 
-double DecayNeutralPion::lossLength(double lf) const {
-	// Returns the loss length in the lab frame.
-	double lifetime;
-	lifetime = tauNeutralPion;
-	return c_light * lifetime * lf;
+double DecayNeutralPion::lossLength(const double& lf) const {
+	return c_light * tauNeutralPion * lf;
 }
 
 double DecayNeutralPion::energyFractionPhoton() const {
 	return 0.5;
 }
 
-void DecayNeutralPion::performInteraction(Candidate *candidate) const {
-
+void DecayNeutralPion::performInteraction(Candidate* candidate) const {
+ 
 	double E = candidate->current.getEnergy();  
 	double w0 = candidate->getWeight();
 

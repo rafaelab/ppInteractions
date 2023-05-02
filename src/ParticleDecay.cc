@@ -8,7 +8,7 @@ ParticleDecay::ParticleDecay(bool photons, bool electrons, bool neutrinos, bool 
 	setHaveNeutrinos(neutrinos);
 	setHavePhotons(photons);
 	setHaveMuons(muons);
-	setDecayParticles(pList);
+	setDecayingParticles(pList);
 	setLimit(limit);
 	setDescription("ParticleDecay");
 	muonDecay = new DecayMuon(neutrinos, electrons, thinning, limit);
@@ -26,7 +26,6 @@ void ParticleDecay::setHaveMuons(bool b) {
 }
 
 void ParticleDecay::setHavePhotons(bool b) {
-	//
 	havePhotons = b;
 }
 
@@ -38,7 +37,7 @@ void ParticleDecay::setLimit(double l) {
 	limit = l;
 }
 
-void ParticleDecay::setDecayParticles(std::vector<int> v) {
+void ParticleDecay::setDecayingParticles(std::vector<int> v) {
 	if (v.size() == 0) {
 		decayParticles.push_back( -13);
 		decayParticles.push_back(  13);
@@ -55,9 +54,10 @@ void ParticleDecay::setThinning(double thinning) {
 	thinning = thinning;
 }
 
-double ParticleDecay::lossLength(int id, double lf) const {
+double ParticleDecay::lossLength(const int& id, const double& lf) const {
 	// Returns the loss length in the lab frame.
 	double lifetime;
+
 	switch (id) {
 		case 13:
 		case -13:
@@ -118,7 +118,7 @@ void ParticleDecay::process(Candidate *candidate) const {
 	// For some reason, lorentz factors are not being automatically computed (lack of mass info in CRPropa)
 	double lf = E / (mass * c_squared);
 	double rate = 1. / lossLength(id, lf);
-	rate *= pow(1 + z, 2);
+	rate *= pow_integer<2>(1 + z);
 
 	// check for interaction
 	Random &random = Random::instance();
