@@ -5,16 +5,18 @@ photons = True
 neutrinos = True
 electrons = True
 muons = True
-thinning = .9
+thinning = .99
 density = 1e13
 d = 1. * kpc # source distance
 e = 1e16 * eV # proton energy
 
 
 obs = Observer()
-obs.add(ObserverPoint())
+obs.add(Observer1D())
 output = TextOutput('test.txt', Output.Event1D)
 output.setEnergyScale(eV)
+output.enable(output.WeightColumn)
+output.disable(output.CandidateTagColumn)
 obs.onDetection(output)
 
 pd = ppint.ParticleDecay(photons, neutrinos, electrons, muons, thinning) # must be called
