@@ -145,7 +145,6 @@ double DecayMuon::energyFractionMuonNeutrino(const double& xmin, const double& x
 void DecayMuon::performInteraction(Candidate* candidate) const {
 
 	double E = candidate->current.getEnergy();    
-	double w0 = candidate->getWeight();
 	int id = candidate->current.getId();
 	double sign = (id > 0) ? 1 : ((id < 0) ? -1 : 0);
 
@@ -179,17 +178,17 @@ void DecayMuon::performInteraction(Candidate* candidate) const {
 
 	if (haveElectrons) {
 		if (random.rand() < pow(fe, thinning)) {
-			double w = w0 / pow(fe, thinning);
+			double w = 1. / pow(fe, thinning);
 			candidate->addSecondary(sign * 11, E * fe, pos, w);
 		}
 	}
 	if (haveNeutrinos) {
 		if (random.rand() < pow(fnue, thinning)) {
-			double w = w0 / pow(fnue, thinning);
+			double w = 1. / pow(fnue, thinning);
 			candidate->addSecondary(- sign * 12, E * fnue, pos, w);
 		}
 		if (random.rand() < pow(fnumu, thinning)) {
-			double w = w0 / pow(fnumu, thinning);
+			double w = 1. / pow(fnumu, thinning);
 			candidate->addSecondary(sign * 14, E * fnumu, pos, w);	
 		}
 	}

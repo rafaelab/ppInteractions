@@ -41,7 +41,6 @@ void DecayChargedPion::performInteraction(Candidate* candidate) const {
 	int id = candidate->current.getId();
 	double sign = (id > 0) ? 1 : ((id < 0) ? -1 : 0);
 	double E = candidate->current.getEnergy();  
-	double w0 = candidate->getWeight();
 
 	Random &random = Random::instance();
 	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
@@ -52,13 +51,13 @@ void DecayChargedPion::performInteraction(Candidate* candidate) const {
 	double f = energyFractionMuon();
 	if (haveMuons) {
 		if (random.rand() < pow(1 - f, thinning)) {
-			double w = w0 / pow(1 - f, thinning);
+			double w = 1. / pow(1 - f, thinning);
 			candidate->addSecondary(sign * 13, E * (1 - f), pos, w);
 		} 
 	}
 	if (haveNeutrinos) {
 		if (random.rand() < pow(f, thinning))  {
-			double w = w0 / pow(f, thinning);
+			double w = 1. / pow(f, thinning);
 			candidate->addSecondary(-sign * 14, E * f, pos, w);
 		} 
 	}
