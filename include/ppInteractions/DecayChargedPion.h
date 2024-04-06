@@ -26,7 +26,7 @@ class DecayChargedPion {
 		void setHaveMuons(bool muons);
 		void setHaveNeutrinos(bool neutrinos);
 		double lossLength(const double& lorentzFactor) const; 
-		double energyFractionMuon() const; 
+		double energyFractionMuon(crpropa::Random& random) const; 
 		void performInteraction(crpropa::Candidate* candidate) const;
 };
 
