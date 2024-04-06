@@ -127,18 +127,15 @@ double DecayMuon::lossLength(const double& lf) const {
 	return c_light * tauMuon * lf;
 }
 
-double DecayMuon::energyFractionElectron(const double& xmin, const double& xmax) const {
-	Random &random = Random::instance();
+double DecayMuon::energyFractionElectron(Random& random, const double& xmin, const double& xmax) const {
 	return interpolate(random.randUniform(xmin, xmax), probabilities, electronFraction);
 }
 
-double DecayMuon::energyFractionElectronNeutrino(const double& xmin, const double& xmax) const {
-	Random &random = Random::instance();
+double DecayMuon::energyFractionElectronNeutrino(Random& random, const double& xmin, const double& xmax) const {
 	return interpolate(random.randUniform(xmin, xmax),probabilities, electronNeutrinoFraction);
 }
 
-double DecayMuon::energyFractionMuonNeutrino(const double& xmin, const double& xmax) const {
-	Random &random = Random::instance();
+double DecayMuon::energyFractionMuonNeutrino(Random& random, const double& xmin, const double& xmax) const {
 	return interpolate(random.randUniform(xmin, xmax), probabilities, muonNeutrinoFraction);
 }
 
@@ -148,7 +145,7 @@ void DecayMuon::performInteraction(Candidate* candidate) const {
 	int id = candidate->current.getId();
 	double sign = (id > 0) ? 1 : ((id < 0) ? -1 : 0);
 
-	Random &random = Random::instance();
+	Random& random = Random::instance();
 	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
 
 	// particle disappears after decay
@@ -171,9 +168,9 @@ void DecayMuon::performInteraction(Candidate* candidate) const {
 	// /***********************************************/
 	// // This is the fast way to do it.
 	// // It doesn't conserve energy, but it holds statistically.
-	double fe = energyFractionElectron(1e-10, 1);
-	double fnue = energyFractionElectronNeutrino(1e-10, 1);
-	double fnumu = energyFractionMuonNeutrino(1e-10, 1);
+	double fe = energyFractionElectron(random, 1e-10, 1);
+	double fnue = energyFractionElectronNeutrino(random, 1e-10, 1);
+	double fnumu = energyFractionMuonNeutrino(random, 1e-10, 1);
 	double ftot = fe + fnue + fnumu;
 
 	if (haveElectrons) {

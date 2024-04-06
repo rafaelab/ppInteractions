@@ -24,7 +24,7 @@ double DecayNeutralPion::lossLength(const double& lf) const {
 	return c_light * tauNeutralPion * lf;
 }
 
-double DecayNeutralPion::energyFractionPhoton() const {
+double DecayNeutralPion::energyFractionPhoton(Random& random) const {
 	return 0.5;
 }
 
@@ -32,13 +32,13 @@ void DecayNeutralPion::performInteraction(Candidate* candidate) const {
  
 	double E = candidate->current.getEnergy();  
 	
-	Random &random = Random::instance();
+	Random& random = Random::instance();
 	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
 
 	// particle disappears after decay
 	candidate->setActive(false);
 
-	double f = energyFractionPhoton();
+	double f = energyFractionPhoton(random);
 	if (havePhotons) {
 		if (random.rand() < pow(1 - f, thinning)) {
 			double w = 1. / pow(1 - f, thinning);
