@@ -21,7 +21,6 @@
 
 class DecayMuon {
 	protected:
-		std::vector<double> logFraction;
 		std::vector<double> probabilities;
 		std::vector<double> electronFraction;
 		std::vector<double> electronNeutrinoFraction;
