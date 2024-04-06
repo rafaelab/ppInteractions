@@ -188,18 +188,15 @@ double NucleusNucleusInteraction::crossSection(const double& energy) const {
 	return res * 1e-31; 
 }
 
-double NucleusNucleusInteraction::energyFractionChargedPion(const double& energy, const double& xmin, const double& xmax) const {
-	Random &random = Random::instance();
+double NucleusNucleusInteraction::energyFractionChargedPion(Random& random, const double& energy, const double& xmin, const double& xmax) const {
 	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, chargedPionFraction);
 }
 
-double NucleusNucleusInteraction::energyFractionNeutralPion(const double& energy, const double& xmin, const double& xmax) const {
-	Random &random = Random::instance();
+double NucleusNucleusInteraction::energyFractionNeutralPion(Random& random, const double& energy, const double& xmin, const double& xmax) const {
 	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, neutralPionFraction);
 }
 
-double NucleusNucleusInteraction::energyFractionEtaMeson(const double& energy, const double& xmin, const double& xmax) const {
-	Random &random = Random::instance();
+double NucleusNucleusInteraction::energyFractionEtaMeson(Random& random, const double& energy, const double& xmin, const double& xmax) const {
 	return interpolate2d(log10(energy), random.randUniform(xmin, xmax), logIncidentEnergy, probabilities, etaMesonFraction);
 }
 
@@ -233,7 +230,7 @@ void NucleusNucleusInteraction::process(Candidate* candidate) const {
 			rate = 1. / lossLength(id, energy);
 
 		// find interaction mode with minimum random decay distance
-		Random &random = Random::instance();
+		Random& random = Random::instance();
 		double randDistance = std::numeric_limits<double>::max();       
 		double d = -log(random.rand()) / rate;
 		if (d > randDistance)
@@ -256,7 +253,7 @@ void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 	
 	double energy = candidate->current.getEnergy();
 
-	Random &random = Random::instance();
+	Random& random = Random::instance();
 
 	// Select position of secondary within step.
 	Vector3d pos = random.randomInterpolatedPosition(candidate->previous.getPosition(), candidate->current.getPosition());
@@ -265,14 +262,10 @@ void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 	if (log10(energy) < logIncidentEnergy.front() or (log10(energy) > logIncidentEnergy.back()))
 		return;
 
-	// double x1 = energyFractionNeutralPion(energy, 0., 1.);
-	// double x2 = energyFractionChargedPion(energy, 0., 1.);
-	// double x3 = energyFractionChargedPion(energy, 0., 1.);
-	// double x4 =    energyFractionEtaMeson(energy, 0., 1.);
-	double x1 = energyFractionNeutralPion(energy, 1e-10, 1.);
-	double x2 = energyFractionChargedPion(energy, 1e-10, 1.);
-	double x3 = energyFractionChargedPion(energy, 1e-10, 1.);
-	double x4 = energyFractionEtaMeson(energy, 1e-10, 1.);
+	double x1 = energyFractionNeutralPion(random, energy, 1e-10, 1.);
+	double x2 = energyFractionChargedPion(random, energy, 1e-10, 1.);
+	double x3 = energyFractionChargedPion(random, energy, 1e-10, 1.);
+	double x4 = energyFractionEtaMeson(random, energy, 1e-10, 1.);
 	double y = (x1 + x2 + x3 + x4);
 	double x = 0;
 	double r = random.rand();

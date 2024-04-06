@@ -1,15 +1,15 @@
 #ifndef PPINTERACTIONS_NUCLEUSNUCLEUSINTERACTIONS_H
 #define PPINTERACTIONS_NUCLEUSNUCLEUSINTERACTIONS_H
 
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <cmath>
-#include <limits>
 #include <algorithm>
-#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <limits>
+#include <numeric>
+#include <sstream>
 
 #include <crpropa/Module.h>
 #include <crpropa/Units.h>
@@ -70,9 +70,9 @@ class NucleusNucleusInteraction : public crpropa::Module {
 		void setHaveNeutrinos(bool neutrinos);
 		void initMesonSpectra();
 		double crossSection(const double& energy) const;
-		double energyFractionNeutralPion(const double& energy, const double& xmin = 0, const double& xmax = 1) const;
-		double energyFractionChargedPion(const double& energy, const double& xmin = 0, const double& xmax = 1) const;
-		double energyFractionEtaMeson(const double& energy, const double& xmin = 0, const double& xmax = 1) const;
+		double energyFractionNeutralPion(crpropa::Random& random, const double& energy, const double& xmin = 0, const double& xmax = 1) const;
+		double energyFractionChargedPion(crpropa::Random& random, const double& energy, const double& xmin = 0, const double& xmax = 1) const;
+		double energyFractionEtaMeson(crpropa::Random& random, const double& energy, const double& xmin = 0, const double& xmax = 1) const;
 		double lossLength(const int& id, const double& E) const; 
 		double lossLength(const int& id, const double& E, const crpropa::Vector3d& position) const; 
 		void process(crpropa::Candidate* candidate) const;
