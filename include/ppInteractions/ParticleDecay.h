@@ -1,5 +1,5 @@
-#ifndef PARTICLEDECAY_H
-#define PARTICLEDECAY_H
+#ifndef PPINTERACTIONS_PARTICLEDECAY_H
+#define PPINTERACTIONS_PARTICLEDECAY_H
 
 #include <crpropa/Units.h>
 #include <crpropa/Common.h>

@@ -1,5 +1,5 @@
-#ifndef DECAYNEUTRALPION_H
-#define DECAYNEUTRALPION_H
+#ifndef PPINTERACTIONS_DECAYNEUTRALPION_H
+#define PPINTERACTIONS_DECAYNEUTRALPION_H
 
 #include <crpropa/Units.h>
 #include <crpropa/Common.h>

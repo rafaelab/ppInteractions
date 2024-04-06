@@ -1,3 +1,6 @@
+#ifndef PPINTERACTIONS_NUCLEUSNUCLEUSINTERACTIONS_H
+#define PPINTERACTIONS_NUCLEUSNUCLEUSINTERACTIONS_H
+
 #include <sstream>
 #include <iostream>
 #include <fstream>
@@ -21,10 +24,6 @@
 
 #include "ppInteractions/Constants.h"
 #include "ppInteractions/ParticleDecay.h"
-
-#ifdef _OPENMP
-	#include "omp.h"
-#endif
 
 
 /**
@@ -82,7 +81,7 @@ class NucleusNucleusInteraction : public crpropa::Module {
 
 
 
-
+#endif
 
 
 

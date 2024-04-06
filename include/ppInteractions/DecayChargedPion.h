@@ -1,5 +1,5 @@
-#ifndef DECAYCHARGEDPION_H
-#define DECAYCHARGEDPION_H
+#ifndef PPINTERACTIONS_DECAYCHARGEDPION_H
+#define PPINTERACTIONS_DECAYCHARGEDPION_H
 
 #include <crpropa/Units.h>
 #include <crpropa/Common.h>

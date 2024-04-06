@@ -1,5 +1,5 @@
-#ifndef DECAYETAMESON_H
-#define DECAYETAMESON_H
+#ifndef PPINTERACTIONS_DECAYETAMESON_H
+#define PPINTERACTIONS_DECAYETAMESON_H
 
 #include <crpropa/Module.h>
 #include <crpropa/Units.h>

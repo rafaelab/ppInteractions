@@ -1,5 +1,5 @@
-#ifndef CONSTANTS_H
-#define CONSTANTS_H
+#ifndef PPINTERACTIONS_CONSTANTS_H
+#define PPINTERACTIONS_CONSTANTS_H
 
 #include <crpropa/Units.h>
 

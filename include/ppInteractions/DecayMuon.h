@@ -1,5 +1,5 @@
-#ifndef DECAYMUON_H
-#define DECAYMUON_H
+#ifndef PPINTERACTIONS_DECAYMUON_H
+#define PPINTERACTIONS_DECAYMUON_H
 
 #include <cmath>
 #include <limits>
