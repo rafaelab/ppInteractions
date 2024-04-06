@@ -1,9 +1,9 @@
 #ifndef PPINTERACTIONS_DECAYMUON_H
 #define PPINTERACTIONS_DECAYMUON_H
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
-#include <algorithm>
 #include <numeric>
 
 #include <crpropa/Module.h>

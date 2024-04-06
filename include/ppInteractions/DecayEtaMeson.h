@@ -20,6 +20,7 @@ class DecayEtaMeson {
 		bool havePhotons;
 		double limit;
 		double thinning;
+		
 	public:
 		DecayEtaMeson(bool photons = true, double thinning = 0, double limit = 0.05);
 		void setLimit(double limit);
