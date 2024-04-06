@@ -23,7 +23,7 @@ class DecayNeutralPion {
 		void setThinning(double thinning);
 		void setHavePhotons(bool photons);
 		double lossLength(const double& lorentzFactor) const; 
-		double energyFractionPhoton() const; 
+		double energyFractionPhoton(crpropa::Random& random) const; 
 		void performInteraction(crpropa::Candidate* candidate) const;
 };
 

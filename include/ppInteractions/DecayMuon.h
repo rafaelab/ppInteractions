@@ -39,9 +39,9 @@ class DecayMuon {
 		void setHaveElectrons(bool electrons);
 		void setHaveNeutrinos(bool neutrinos);
 		double lossLength(const double& lorentzFactor) const; 
-		double energyFractionElectron(const double& xmin = 0, const double& xmax = 1) const; 
-		double energyFractionElectronNeutrino(const double& xmin = 0, const double& xmax = 1) const; 
-		double energyFractionMuonNeutrino(const double& xmin = 0, const double& xmax = 1) const; 
+		double energyFractionElectron(crpropa::Random& random, const double& xmin = 0, const double& xmax = 1) const; 
+		double energyFractionElectronNeutrino(crpropa::Random& random, const double& xmin = 0, const double& xmax = 1) const; 
+		double energyFractionMuonNeutrino(crpropa::Random& random, const double& xmin = 0, const double& xmax = 1) const; 
 		void performInteraction(crpropa::Candidate* candidate) const;
 };
 
