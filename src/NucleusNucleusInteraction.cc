@@ -11,16 +11,14 @@ NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, dou
 	setDescription("NucleusNucleusInteraction");
 }
 
-NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<Grid1f> grid, double normMatterField, double thinning, double limit) : Module() {
+NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<Density> density, double normMatterField, double thinning, double limit) : Module() {
 	setFieldNorm(normMatterField);
 	setLimit(limit);
 	setThinning(thinning);
 	setDescription("NucleusNucleusInteraction");
 	setIsDensityConstant(false);
-	if (normMatterField != 1) 
-		scaleGrid(grid, normMatterField);
 	initMesonSpectra();
-	densityGrid = grid;
+	density = density;
 }
 
 void NucleusNucleusInteraction::setIsDensityConstant(bool b) {
@@ -211,7 +209,7 @@ double NucleusNucleusInteraction::lossLength(const int& id, const double& energy
 }
 
 double NucleusNucleusInteraction::lossLength(const int& id, const double& energy, const Vector3d& position) const {
-	double rate = crossSection(energy) * densityGrid->interpolate(position);
+	double rate = crossSection(energy) * density->getNucleonDensity(position);
 	return 1. / rate;
 }
 
@@ -257,7 +255,6 @@ void NucleusNucleusInteraction::process(Candidate* candidate) const {
 void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 	
 	double energy = candidate->current.getEnergy();
-	double w0 = candidate->getWeight();
 
 	Random &random = Random::instance();
 
@@ -296,7 +293,7 @@ void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 	}
 
 	if (random.rand() < pow(x, thinning)) {
-		double w = w0 / pow(x, thinning);
+		double w = 1. / pow(x, thinning);
 		candidate->addSecondary(id, x * energy, pos, w);
 	}
 
