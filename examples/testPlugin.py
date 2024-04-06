@@ -1,5 +1,6 @@
 from crpropa import *
-import NucleusNucleusInteraction as ppint
+# import NucleusNucleusInteraction as ppint
+import ppInteractions as ppint
 
 photons = True
 neutrinos = True
