@@ -11,14 +11,14 @@ NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, dou
 	setDescription("NucleusNucleusInteraction");
 }
 
-NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<Density> density, double normMatterField, double thinning, double limit) : Module() {
+NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<Density> rho, double normMatterField, double thinning, double limit) : Module() {
 	setFieldNorm(normMatterField);
 	setLimit(limit);
 	setThinning(thinning);
-	setDescription("NucleusNucleusInteraction");
 	setIsDensityConstant(false);
+	setDensityGrid(rho);
 	initMesonSpectra();
-	density = density;
+	setDescription("NucleusNucleusInteraction");
 }
 
 void NucleusNucleusInteraction::setIsDensityConstant(bool b) {
@@ -29,6 +29,10 @@ void NucleusNucleusInteraction::setFieldNorm(double x) {
 	if (x == 0) 
 		x = std::numeric_limits<double>::min();
 	normMatterField = x;
+}
+
+void NucleusNucleusInteraction::setDensityGrid(ref_ptr<Density> rho) {
+	density = rho;
 }
 
 void NucleusNucleusInteraction::setLimit(double l) {

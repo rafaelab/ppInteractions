@@ -64,6 +64,7 @@ class NucleusNucleusInteraction : public crpropa::Module {
 		void setLimit(double limit);
 		void setThinning(double thinning);
 		void setFieldNorm(double normMatterField);
+		void setDensityGrid(crpropa::ref_ptr<crpropa::Density> rho);
 		void setIsDensityConstant(bool densityConstant);
 		void setHavePhotons(bool photons);
 		void setHaveElectrons(bool electorns);
