@@ -57,6 +57,7 @@ class NucleusNucleusInteraction : public crpropa::Module {
 		double thinning;
 		double normMatterField;
 		bool isDensityConstant;
+		std::string interactionTag;
 
 	public:
 		NucleusNucleusInteraction(double normMatterField = 1., double thinning = 0, double limit = 0.1);
@@ -67,9 +68,11 @@ class NucleusNucleusInteraction : public crpropa::Module {
 		void setDensityGrid(crpropa::ref_ptr<crpropa::Density> rho);
 		void setIsDensityConstant(bool densityConstant);
 		void setHavePhotons(bool photons);
-		void setHaveElectrons(bool electorns);
+		void setHaveElectrons(bool electrons);
 		void setHaveNeutrinos(bool neutrinos);
+		void setInteractionTag(std::string tag = "NucNuc");
 		void initMesonSpectra();
+		std::string getInteractionTag() const;
 		double crossSection(const double& energy) const;
 		double energyFractionNeutralPion(crpropa::Random& random, const double& energy, const double& xmin = 0, const double& xmax = 1) const;
 		double energyFractionChargedPion(crpropa::Random& random, const double& energy, const double& xmin = 0, const double& xmax = 1) const;

@@ -7,6 +7,7 @@ DecayMuon::DecayMuon(bool neutrinos, bool electrons, double thinning, double lim
 	setHaveElectrons(electrons);
 	setLimit(limit);
 	setThinning(thinning);
+	setInteractionTag("Dec13");
 	initSpectra();
 }
 
@@ -114,6 +115,14 @@ void DecayMuon::setThinning(double thinning) {
 	thinning = thinning;
 }
 
+void DecayMuon::setInteractionTag(std::string tag) {
+	interactionTag = tag;
+}
+
+std::string DecayMuon::getInteractionTag() const {
+	return interactionTag;
+}
+
 double DecayMuon::lossLength(const double& lf) const {
 	return c_light * tauMuon * lf;
 }
@@ -167,17 +176,17 @@ void DecayMuon::performInteraction(Candidate* candidate) const {
 	if (haveElectrons) {
 		if (random.rand() < pow(fe, thinning)) {
 			double w = 1. / pow(fe, thinning);
-			candidate->addSecondary(sign * 11, E * fe, pos, w);
+			candidate->addSecondary(sign * 11, E * fe, pos, w, interactionTag);
 		}
 	}
 	if (haveNeutrinos) {
 		if (random.rand() < pow(fnue, thinning)) {
 			double w = 1. / pow(fnue, thinning);
-			candidate->addSecondary(- sign * 12, E * fnue, pos, w);
+			candidate->addSecondary(- sign * 12, E * fnue, pos, w, interactionTag);
 		}
 		if (random.rand() < pow(fnumu, thinning)) {
 			double w = 1. / pow(fnumu, thinning);
-			candidate->addSecondary(sign * 14, E * fnumu, pos, w);	
+			candidate->addSecondary(sign * 14, E * fnumu, pos, w, interactionTag);	
 		}
 	}
 

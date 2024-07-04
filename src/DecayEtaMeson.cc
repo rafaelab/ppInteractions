@@ -6,6 +6,7 @@ DecayEtaMeson::DecayEtaMeson(bool photons, double thinning, double limit) {
 	setHavePhotons(photons);
 	setLimit(limit);
 	setThinning(thinning);
+	setInteractionTag("Dec221");
 }
 
 void DecayEtaMeson::setHavePhotons(bool b) {
@@ -18,6 +19,14 @@ void DecayEtaMeson::setLimit(double l) {
 
 void DecayEtaMeson::setThinning(double thinning) {
 	thinning = thinning;
+}
+
+void DecayEtaMeson::setInteractionTag(std::string tag) {
+	interactionTag = tag;
+}
+
+std::string DecayEtaMeson::getInteractionTag() const {
+	return interactionTag;
 }
 
 double DecayEtaMeson::lossLength(const double& lf) const {
@@ -42,11 +51,11 @@ void DecayEtaMeson::performInteraction(Candidate* candidate) const {
 	if (havePhotons) {
 		if (random.rand() < pow(1 - f, thinning)) {
 			double w = 1. / pow(1 - f, thinning);
-			candidate->addSecondary(22, E * (1 - f), pos, w);
+			candidate->addSecondary(22, E * (1 - f), pos, w, interactionTag);
 		} 
 		if (random.rand() < pow(f, thinning)) {
 			double w = 1. / pow(f, thinning);
-			candidate->addSecondary(22, E * f, pos, w);
+			candidate->addSecondary(22, E * f, pos, w, interactionTag);
 		} 
 	}
 }

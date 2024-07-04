@@ -18,6 +18,7 @@ class DecayChargedPion {
 		bool haveNeutrinos;
 		double limit;
 		double thinning;
+		std::string interactionTag;
 
 	public:
 		DecayChargedPion(bool muons = true, bool neutrinos = true, double thinning = 0, double limit = 0.05);
@@ -25,6 +26,8 @@ class DecayChargedPion {
 		void setThinning(double thinning);
 		void setHaveMuons(bool muons);
 		void setHaveNeutrinos(bool neutrinos);
+		void setInteractionTag(std::string tag);
+		std::string getInteractionTag() const;
 		double lossLength(const double& lorentzFactor) const; 
 		double energyFractionMuon(crpropa::Random& random) const; 
 		void performInteraction(crpropa::Candidate* candidate) const;

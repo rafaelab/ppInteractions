@@ -20,12 +20,15 @@ class DecayEtaMeson {
 		bool havePhotons;
 		double limit;
 		double thinning;
+		std::string interactionTag;
 		
 	public:
 		DecayEtaMeson(bool photons = true, double thinning = 0, double limit = 0.05);
 		void setLimit(double limit);
 		void setThinning(double thinning);
 		void setHavePhotons(bool photons);
+		void setInteractionTag(std::string tag);
+		std::string getInteractionTag() const;
 		double lossLength(const double& lorentzFactor) const; 
 		double energyFractionPhoton(crpropa::Random& random) const; 
 		void performInteraction(crpropa::Candidate* candidate) const;

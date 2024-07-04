@@ -8,6 +8,7 @@ DecayChargedPion::DecayChargedPion(bool muons, bool neutrinos, double thinning, 
 	setHaveNeutrinos(neutrinos);
 	setThinning(thinning);
 	setLimit(limit);
+	setInteractionTag("Dec211");
 }
 
 void DecayChargedPion::setHaveMuons(bool b) {
@@ -24,6 +25,14 @@ void DecayChargedPion::setLimit(double l) {
 
 void DecayChargedPion::setThinning(double thinning) {
 	thinning = thinning;
+}
+
+void DecayChargedPion::setInteractionTag(std::string tag) {
+	interactionTag = tag;
+}
+
+std::string DecayChargedPion::getInteractionTag() const {
+	return interactionTag;
 }
 
 double DecayChargedPion::lossLength(const double& lf) const {
@@ -53,13 +62,13 @@ void DecayChargedPion::performInteraction(Candidate* candidate) const {
 	if (haveMuons) {
 		if (random.rand() < pow(f, thinning)) {
 			double w = 1. / pow(f, thinning);
-			candidate->addSecondary(sign * 13, E * f, pos, w);
+			candidate->addSecondary(sign * 13, E * f, pos, w, interactionTag);
 		} 
 	}
 	if (haveNeutrinos) {
 		if (random.rand() < pow(1 - f, thinning))  {
 			double w = 1. / pow(1 - f, thinning);
-			candidate->addSecondary(-sign * 14, E * (1 - f), pos, w);
+			candidate->addSecondary(-sign * 14, E * (1 - f), pos, w, interactionTag);
 		} 
 	}
 }

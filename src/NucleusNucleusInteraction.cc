@@ -7,6 +7,7 @@ NucleusNucleusInteraction::NucleusNucleusInteraction(double normMatterField, dou
 	setLimit(limit);
 	setIsDensityConstant(true);
 	setThinning(thinning);
+	setInteractionTag("NucNuc");
 	initMesonSpectra();
 	setDescription("NucleusNucleusInteraction");
 }
@@ -17,6 +18,7 @@ NucleusNucleusInteraction::NucleusNucleusInteraction(ref_ptr<Density> rho, doubl
 	setThinning(thinning);
 	setIsDensityConstant(false);
 	setDensityGrid(rho);
+	setInteractionTag("NucNuc");
 	initMesonSpectra();
 	setDescription("NucleusNucleusInteraction");
 }
@@ -53,6 +55,10 @@ void NucleusNucleusInteraction::setHaveElectrons(bool b) {
 
 void NucleusNucleusInteraction::setHaveNeutrinos(bool b) {
 	haveNeutrinos = b;
+}
+
+void NucleusNucleusInteraction::setInteractionTag(std::string tag) {
+	interactionTag = tag;
 }
 
 void NucleusNucleusInteraction::initMesonSpectra() {
@@ -181,6 +187,10 @@ void NucleusNucleusInteraction::initMesonSpectra() {
 	}
 }
 
+std::string NucleusNucleusInteraction::getInteractionTag() const {
+	return interactionTag;
+}
+
 double NucleusNucleusInteraction::crossSection(const double& energy) const {
 	// Parametrisation from:
 	//   Kafexhiu et al. PRD 90 (2014) 123014.
@@ -291,7 +301,7 @@ void NucleusNucleusInteraction::performInteraction(Candidate* candidate) const {
 
 	if (random.rand() < pow(x, thinning)) {
 		double w = 1. / pow(x, thinning);
-		candidate->addSecondary(id, x * energy, pos, w);
+		candidate->addSecondary(id, x * energy, pos, w, interactionTag);
 	}
 
 	candidate->current.setEnergy((1 - x) * energy);
