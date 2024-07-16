@@ -4,26 +4,6 @@ Plugin to be used with CRPropa 3 to handle proton-proton scattering.
 It models the interaction of high-energy cosmic rays with hydrogen-rich gas in astrophysical environments.
 
 
-The interaction and spectra of secondary particles are parametrised following:
-
-- Kelner, Aharonian, Bugayov. Phys. Rev. D 74 (2006) 034018. (see also erratum: PRD 79 (2009) 039901).
-
-- Kafexhiu, Aharonian, Taylor, Vila. Phys. Rev. D 90 (2014) 123014.
-
-
-Information about CRPropa 3 can be found [here](https://github.com/CRPropa/CRPropa3/) and in the paper:
-
-- Alves Batista et al. J. Cosmol. Astropart. Phys. 05 (2016) 038. [arXiv:1603.07142](https://arxiv.org/abs/1603.07142)
-
-- Alves Batista et al. J. Cosmol. Astropart. Phys. 09 (2022) 035. [arXiv:2208.00107](https://arxiv.org/abs/2208.00107)
-
-## Notes
-- The production of secondaries does not conserve energy at each interaction, only statistically.
-- The `NucleusNucleusInteraction` module produces mesons (pions, eta). The `ParticleDecay` model performs the actual decays of these particles.
-
-## To-do
-- For now this module only performs proton-proton interactions, but it will soon be extended for nucleus-nucleus interactions.
-
 
 ## Installation procedure
 
@@ -59,7 +39,6 @@ cmake .. \
     -DCRPropa_SWIG_PATH=$CRPropa_DIR/share/crpropa/swig_interface
 ```
 
-
 4. If the code was properly compiled, you are (probably) ready to go!
 Try the following:
 ```
@@ -68,8 +47,40 @@ python -c "from ppInteractions import *"
 Make sure to add the path where ppInteractions.py is created to your PYTHONPATH, if you want to expose it globally.
 Alternatively, this can be hard-coded in your python script.
 
+## Requirements
+
+This code is a plugin for CRPropa 3.
+More information can be found [here](https://github.com/CRPropa/CRPropa3/) and in the paper:
+
+- Alves Batista et al. J. Cosmol. Astropart. Phys. 05 (2016) 038. [arXiv:1603.07142](https://arxiv.org/abs/1603.07142)
+
+- Alves Batista et al. J. Cosmol. Astropart. Phys. 09 (2022) 035. [arXiv:2208.00107](https://arxiv.org/abs/2208.00107)
+
+
+The code requires C++11 and CMake 3.14+
+
+
+## Physics
+
+The interaction and spectra of secondary particles are parametrised following:
+
+- Kelner, Aharonian, Bugayov. Phys. Rev. D 74 (2006) 034018. (see also erratum: PRD 79 (2009) 039901).
+
+- Kafexhiu, Aharonian, Taylor, Vila. Phys. Rev. D 90 (2014) 123014.
+
+This implementation is devised to yield efficient *approximate* results using simple parametrisations.
+The production of secondaries does not conserve energy at each interaction, only statistically.
+
+In general, the `NucleusNucleusInteraction` module produces mesons (pions, eta). The `ParticleDecay` model performs the actual decays of these particles.
+Therefore, both of these modules must be included in the simulation.
+
+
+## To-do
+
+- For now this module only performs proton-proton interactions, but it will soon be extended for nucleus-nucleus interactions.
 
 
 ## Disclaimer
+
 This program is provided 'as is', without warranties of any kind. 
 Please use your discernement to interpret the results obtained with it.
