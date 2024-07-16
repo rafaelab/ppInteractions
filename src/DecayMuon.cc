@@ -23,20 +23,20 @@ void DecayMuon::initSpectra() {
 	const int np = 10000; // number of points to sample probability array
 
 	// Create an array with energy fractions
-	const double xmin = 0.; // minimum energy fraction
+	const double xmin = 0.;
 	double dx = (1. - xmin) / nx;
-
-	std::vector<double> fraction(nx);
 	for (int i = 0; i < nx; i++) {
-		fraction[i] = xmin + i;
+		fraction.push_back(xmin + i * dx); 
+		logFraction.push_back(log10(fraction[i]));
 	}
 
+
 	// Create an array with probabilities for sampling
-	const double pmin = 0; // minimum energy fraction
-	const double pmax = 1; // maximum energy fraction
-	double dp = (pmax - pmin) / np;
-	for (int i = 0; i < np; i++) {
-		probabilities.push_back(pmin + i * dp);
+	const double pmin = 0.;
+	const double pmax = 1.;
+	double dp = (pmax - pmin) / np; 
+	for (int i = 0; i < np; i++ ) {
+		probabilities.push_back( pmin + i * dp );
 	}
 
 	// For a fixed incident proton energy, get distribution of energy fractions.
@@ -49,7 +49,7 @@ void DecayMuon::initSpectra() {
 
 	for (size_t j = 0; j < nx; j++) {
 		// Equations from Gaisser's book, 2016, tab. 6.2
-		double x = fraction[j];
+		double x = fraction[j]; 
 
 		// electrons/muon neutrinos from muon decay
 		double g0 = 5. / 3. - 3. * pow_integer<2>(x) + 4. / 3. * pow_integer<3>(x);
@@ -90,13 +90,14 @@ void DecayMuon::initSpectra() {
 
 	// Invert distribution and sample from it
 	for (size_t j = 0; j < probabilities.size(); j++) {
-		double y1 = interpolate(probabilities[j], logFMuonNeutrino, fraction);
-		double y2 = interpolate(probabilities[j], logFElectron, fraction);
-		double y3 = interpolate(probabilities[j], logFElectronNeutrino, fraction);
+		double y1 = interpolate(log10(probabilities[j]), logFMuonNeutrino, fraction);
+		double y2 = interpolate(log10(probabilities[j]), logFElectron, fraction);
+		double y3 = interpolate(log10(probabilities[j]), logFElectronNeutrino, fraction);
 		muonNeutrinoFraction.push_back(y1);
 		electronFraction.push_back(y2);
 		electronNeutrinoFraction.push_back(y3);
 	}
+
 }
 
 void DecayMuon::setHaveElectrons(bool b) {
@@ -127,7 +128,8 @@ double DecayMuon::lossLength(const double& lf) const {
 	return c_light * tauMuon * lf;
 }
 
-double DecayMuon::energyFractionElectron(Random& random, const double& xmin, const double& xmax) const {
+double DecayMuon::energyFractionElectron(Random& rando, const double& xmin, const double& xmax) const {
+	Random& random = Random::instance();
 	return interpolate(random.randUniform(xmin, xmax), probabilities, electronFraction);
 }
 
