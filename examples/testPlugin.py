@@ -7,9 +7,22 @@ neutrinos = True
 electrons = True
 muons = True
 thinning = .99
-density = 1e13
 d = 1. * kpc # source distance
 e = 1e16 * eV # proton energy
+
+
+## example constant density
+# density = ConstantDensity(1e13, 2, .5)
+
+# example density on grid
+filename = '/Users/rab/Dropbox/analyses/interactions_implementation/data/H2_dens_mean_BEG03.txt'
+origin = Vector3d(-15.96875, -15.96875, -0.46875) * kpc
+nX, nY, nZ = 512, 512, 16
+spacing = 0.0625 * kpc
+grid = Grid1f(origin, nX, nY, nZ, spacing)
+grid.setClipVolume(True) # return 0 outside of the volume
+loadGridFromTxt(grid, filename)
+density = DensityGrid(grid)
 
 
 obs = Observer()
@@ -22,6 +35,7 @@ obs.onDetection(output)
 
 pd = ppint.ParticleDecay(photons, neutrinos, electrons, muons, thinning) # must be called
 nn = ppint.NucleusNucleusInteraction(density, thinning)
+nn.setNormDensityField(1e-5)
 
 sim = ModuleList()
 sim.add(SimplePropagation())
